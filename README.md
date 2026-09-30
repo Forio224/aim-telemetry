@@ -1,0 +1,83 @@
+# Aim Telemetry
+
+Диагностика тренировок аима по локальной истории **KovaaK's** и **Aimbeast**: консольный отчёт и HTML-дашборд.
+
+Отвечает не на вопрос «сколько выбил», а на вопрос «что именно сломалось»: отделяет нестабильность внимания от упора в потолок техники, показывает разминку и точку усталости, сравнивает рекорды бенчмарка с текущей формой и показывает, что дало каждое изменение железа или посадки.
+
+*English: aim-training diagnostics from local KovaaK's and Aimbeast history. Russian by default; use `--lang en` or `--set lang=en`, the dashboard has an RU/EN switch.*
+
+## Что умеет
+
+- **Диагноз сессии.** Норма — медиана последних прогонов на той же сенсе; сдвиг считается значимым, только если он больше разброса. Метки: выше/ниже нормы, в шуме (с подсказкой, сколько прогонов нужно, чтобы судить), нестабильность, потолок, плато.
+- **Форма сессии.** Где кончается разминка и начинается спад — по одной сессии и в среднем за две недели.
+- **Бенчмарки KovaaK's.** Рекорды с сайта против формы по последним прогонам. Voltaic — в energy (Novice, Intermediate, Advanced), остальные (Viscose, Avasive…) — в своих рангах. Что добрать до замера и какой порог ближе всего.
+- **Журнал изменений.** Строка в `changes.txt` на каждое изменение (глайды, коврик, сенса) — и сдвиг результатов «сразу после» и «к концу периода».
+- **Aimbeast.** История читается локально; время прогонов восстанавливается по логу Steam и файлам игры.
+- **Дашборд.** Один HTML-файл, работает без интернета, RU/EN.
+
+## Установка
+
+**Проще всего — `aim-telemetry.exe`** из раздела Releases. Двойной клик: программа сама найдёт Steam, KovaaK's и Aimbeast, соберёт дашборд и откроет его в браузере.
+
+С Python 3.11+:
+
+```
+pipx install git+https://github.com/Forio224/aim-telemetry
+```
+
+## Команды
+
+```
+aim-telemetry                      последняя сессия KovaaK's
+aim-telemetry --days 14            всё за 14 дней
+aim-telemetry --session 2          предпоследняя сессия
+aim-telemetry --scenario smooth    только сценарии с этой подстрокой
+aim-telemetry --source aimbeast    то же по Aimbeast
+aim-telemetry --bench              бенчмарк: рекорды и форма
+aim-telemetry --bench --bench-id 2336
+aim-telemetry --list-benchmarks viscose     каталог KovaaK's с вашим рангом в каждом
+aim-telemetry --changes            что дало каждое изменение из журнала
+aim-telemetry --dashboard          HTML-дашборд
+aim-telemetry --config             настройки и пути
+aim-telemetry --setup              повторить автопоиск
+aim-telemetry --set test_date=2026-10-13 lang=en
+```
+
+## Настройки и файлы
+
+Всё лежит в `%APPDATA%\aim-telemetry` (Windows) или `~/.config/aim-telemetry`:
+
+| файл | что это |
+|---|---|
+| `config.json` | папки игр, Steam ID, ник KovaaK's, язык, дата замера |
+| `changes.txt` | журнал изменений: `2026-09-21  стеклянные глайды` |
+| `benchmarks.txt` | бенчмарки для дашборда: `2834  # Voltaic S5.5 Intermediate`, первый — по умолчанию |
+| `dashboard.html` | последний собранный дашборд |
+
+При первом запуске настройки заполняются сами: Steam — из реестра, библиотеки — из `libraryfolders.vdf`, аккаунт — из `loginusers.vdf`, ник KovaaK's — из имени в Steam с проверкой через сайт. Если что-то не нашлось — `--set ключ=значение`.
+
+## Приватность
+
+История читается только с диска и никуда не отправляется; дашборд — локальный файл. В сеть уходят только запросы к `kovaaks.com` за бенчмарками и каталогом (Steam ID и ник, как у самого сайта); ответы кэшируются на час в `%LOCALAPPDATA%\aim-telemetry\cache`. С `--no-bench` дашборд собирается вообще без сети.
+
+## Ограничения
+
+- Форматы файлов KovaaK's и Aimbeast не документированы. Если игра их поменяет, программа скажет «формат не распознан», а не покажет пустой отчёт.
+- API `kovaaks.com` не публичный: может измениться без предупреждения.
+- Aimbeast не пишет сенсу в прогоны и не хранит пороги рангов — бенчмарков для него нет.
+- vt-energy сверена с evxl.app для Voltaic S5.5; у остальных бенчмарков — ранги сайта и «уровень» (ранг + доля пути до следующего).
+
+## Разработка
+
+```
+uv sync
+uv run pytest
+uv run ruff check src tests
+uv run python scripts/build_exe.py     # dist/aim-telemetry.exe
+```
+
+Тексты интерфейса — `src/aim_telemetry/messages.py` (ключ → RU/EN), тот же каталог использует дашборд. Страница собирается из `web/template.html`, `dashboard.css`, `dashboard.js` и встроенной `echarts.min.js`. Релиз: тег `v*` → GitHub Actions собирает `.exe` и прикладывает к релизу.
+
+## Лицензии
+
+Код — MIT. Внутри: [Apache ECharts](https://echarts.apache.org) 5.5.1 (Apache License 2.0, шапка лицензии сохранена в файле); шрифты Unbounded и JetBrains Mono подключаются с Google Fonts (SIL Open Font License). Проект не связан с KovaaK's, Aimbeast и Voltaic.

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aim-telemetry"
+dynamic = ["version"]
+description = "Диагностика тренировок аима по локальной истории KovaaK's и Aimbeast: консольный отчёт и HTML-дашборд"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = []
+
+[project.scripts]
+aim-telemetry = "aim_telemetry.cli:main"
+
+[tool.hatch.version]
+path = "src/aim_telemetry/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aim_telemetry"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "pyinstaller>=6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+  "E501",
+  "UP031",   # %-форматирование — стиль проекта: таблицы с шириной колонок
+  "B905",    # zip без strict: массивы Aimbeast бывают разной длины, обрезка задумана
+]

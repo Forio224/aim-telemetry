@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aim Telemetry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@400;600;800&display=swap" rel="stylesheet">
+<script>/*__ECHARTS__*/</script>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Aim<span>·</span>Telemetry</div>
+    <nav class="tabs" role="tablist" data-i18n-aria="ui.aria_source" id="tabs"></nav>
+    <div class="stamp" id="stamp"></div>
+    <button class="lang" id="lang" type="button">EN</button>
+  </header>
+
+  <main>
+    <section class="hero" id="hero" data-i18n-aria="ui.aria_summary"></section>
+
+    <section id="cats-section" aria-labelledby="cats-h">
+      <div class="eyebrow"><span data-i18n="ui.eb_bench"></span><h2 id="cats-h" data-i18n="ui.h_cats"></h2><span class="aside" id="cats-aside"></span></div>
+      <div class="bench-pick" id="bench-pick" role="group" data-i18n-aria="ui.aria_bench"></div>
+      <div class="cats">
+        <div class="panel gauges" id="gauges"></div>
+        <div class="panel advice" id="advice"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="vol-h">
+      <div class="eyebrow"><span data-i18n="ui.eb_volume"></span><h2 id="vol-h" data-i18n="ui.h_volume"></h2><span class="aside" data-i18n="ui.aside_volume"></span></div>
+      <div class="panel chart-panel"><div class="chart" id="volume"></div></div>
+    </section>
+
+    <section aria-labelledby="exp-h">
+      <div class="eyebrow"><span data-i18n="ui.eb_scen"></span><h2 id="exp-h" data-i18n="ui.h_explorer"></h2><span class="aside" data-i18n="ui.aside_explorer"></span></div>
+      <div class="explorer">
+        <div class="panel list-panel">
+          <div class="list-head">
+            <input class="search" id="search" type="search" data-i18n-ph="ui.search" data-i18n-aria="ui.search">
+            <label class="toggle"><input type="checkbox" id="recent" checked> <span data-i18n="ui.recent"></span></label>
+          </div>
+          <div class="list" id="list" role="list"></div>
+        </div>
+        <div class="panel detail">
+          <h3 id="scn-title"></h3>
+          <div class="chips" id="scn-chips"></div>
+          <div class="chart tall" id="scn-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="ses-h">
+      <div class="eyebrow"><span data-i18n="ui.eb_diag"></span><h2 id="ses-h" data-i18n="ui.h_session"></h2><span class="aside" id="ses-aside"></span></div>
+      <div class="session">
+        <div class="panel">
+          <div class="table-wrap"><table class="diag" id="diag"></table></div>
+          <ul class="hints" id="hints"></ul>
+        </div>
+        <div class="side">
+          <div class="panel">
+            <div class="panel-title" data-i18n="ui.shape_title"></div>
+            <div class="chart" id="shape"></div>
+            <div class="shape-note" id="shape-note"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title" data-i18n="ui.todo_title"></div>
+            <ol class="todo" id="todo"></ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="chg-h">
+      <div class="eyebrow"><span data-i18n="ui.eb_journal"></span><h2 id="chg-h" data-i18n="ui.h_changes"></h2><span class="aside" data-i18n="ui.aside_changes"></span></div>
+      <div class="changes" id="changes"></div>
+    </section>
+
+    <details class="legend">
+      <summary data-i18n="ui.legend"></summary>
+      <dl>
+        <dt data-i18n="ui.lg_energy_t"></dt><dd data-i18n="ui.lg_energy_d"></dd>
+        <dt data-i18n="ui.lg_level_t"></dt><dd data-i18n="ui.lg_level_d"></dd>
+        <dt data-i18n="ui.lg_norm_t"></dt><dd data-i18n="ui.lg_norm_d"></dd>
+        <dt data-i18n="ui.lg_noise_t"></dt><dd data-i18n="ui.lg_noise_d"></dd>
+        <dt data-i18n="ui.lg_cap_t"></dt><dd data-i18n="ui.lg_cap_d"></dd>
+        <dt data-i18n="ui.lg_runlevel_t"></dt><dd data-i18n="ui.lg_runlevel_d"></dd>
+        <dt data-i18n="ui.lg_changes_t"></dt><dd data-i18n="ui.lg_changes_d"></dd>
+      </dl>
+    </details>
+  </main>
+</div>
+
+<script>
+const DATA = /*__AIM_DATA__*/null;
+/*__JS__*/
+</script>
+</body>
+</html>
