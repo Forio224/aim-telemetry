@@ -6,7 +6,7 @@
   --line-2: #343941;
   --text: #ece9e2;
   --muted: #8d9199;
-  --faint: #5a5f67;
+  --faint: #82878f;            /* тусклый, но читаемый текст: от 4.6:1 на всех панелях */
 
   --signal: #ffb020;          /* фирменный янтарь: медиана, фокус, активное */
   --signal-dim: rgba(255, 176, 32, .14);
@@ -182,15 +182,16 @@ section { margin-top: 44px; }
 .chip b { font-weight: 700; }
 
 /* ── сессия ── */
-.session { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--gap); }
+/* таблице диагноза — всё место, кроме узкой колонки карточек: иначе «диагноз» уезжает за край */
+.session { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: var(--gap); }
 .table-wrap { overflow-x: auto; padding: 6px 4px; }
 table.diag { width: 100%; border-collapse: collapse; font-size: 12px; }
-table.diag th { text-align: right; font-weight: 400; color: var(--faint); padding: 8px 10px; white-space: nowrap; border-bottom: 1px solid var(--line-2); }
+table.diag th { text-align: right; font-weight: 400; color: var(--faint); padding: 8px 8px; white-space: nowrap; border-bottom: 1px solid var(--line-2); }
 table.diag th:first-child, table.diag td:first-child { text-align: left; }
-table.diag td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.diag td { text-align: right; padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 table.diag tr { transition: background .15s; }
 table.diag tbody tr:hover { background: var(--panel-2); }
-.row-link { cursor: pointer; border: 0; background: none; padding: 0; text-align: left; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.row-link { cursor: pointer; border: 0; background: none; padding: 0; text-align: left; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .row-link:hover { color: var(--signal); }
 .cross { color: var(--warn); }
 .label { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid currentColor; }
@@ -306,6 +307,9 @@ details.legend dd { margin: 0; }
 .hero > *, .stack > *, .cats > *, .session > *, .side > *, .explorer > *, .change > * { min-width: 0; }
 .gauges { align-self: start; }
 
+@media (max-width: 1280px) {
+  .session { grid-template-columns: 1fr; }
+}
 @media (max-width: 1100px) {
   .hero, .cats, .session, .explorer { grid-template-columns: 1fr; }
   .list-panel { max-height: 320px; }
