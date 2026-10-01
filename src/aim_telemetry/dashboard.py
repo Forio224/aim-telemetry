@@ -76,7 +76,7 @@ def scenarios_payload(runs: list[Run], now: datetime,
             "tag": (tagged or {}).get(name),
             "sens": current, "best": max(r.score for r in same),
             "trend": prog.trend, "sinceBest": prog.days_since_best, "plateau": prog.plateau,
-            "status": status["status"], "recent": status["recent"], "share": status["share"],
+            "status": status["status"], "last3": status["recent"], "share": status["share"],
             "t": [ts(r.when) for r in own], "s": [r.score for r in own],
             "a": [r.accuracy for r in own], "k": [sens_index[r.sens] for r in own],
         })

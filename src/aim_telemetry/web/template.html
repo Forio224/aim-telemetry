@@ -18,7 +18,7 @@
     <div class="brand">Aim<span>·</span>Telemetry</div>
     <nav class="tabs" role="tablist" data-i18n-aria="ui.aria_source" id="tabs"></nav>
     <div class="stamp" id="stamp"></div>
-    <button class="lang" id="lang" type="button">EN</button>
+    <div class="lang" id="lang" role="group"><button type="button" data-lang="ru">RU</button><button type="button" data-lang="en">EN</button></div>
   </header>
 
   <main>
@@ -31,6 +31,11 @@
         <div class="panel gauges" id="gauges"></div>
         <div class="panel advice" id="advice"></div>
       </div>
+    </section>
+
+    <section aria-labelledby="ov-h">
+      <div class="eyebrow"><span data-i18n="ui.eb_scen"></span><h2 id="ov-h" data-i18n="ui.h_overview"></h2><span class="aside" id="ov-aside"></span></div>
+      <div class="panel"><div class="table-wrap overview-wrap"><table class="diag" id="overview"></table></div></div>
     </section>
 
     <section aria-labelledby="vol-h">

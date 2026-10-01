@@ -42,7 +42,7 @@ class PayloadTest(unittest.TestCase):
     def test_scenarios_carry_status_on_current_sens(self):
         runs = [run(i * 2, s) for i, s in enumerate([90, 100, 99, 98])]
         scenario = dash.source_payload("X", runs, [], T0 + timedelta(days=1))["scenarios"][0]
-        self.assertEqual((scenario["status"], scenario["recent"]), ("max", 99))
+        self.assertEqual((scenario["status"], scenario["last3"]), ("max", 99))
         self.assertAlmostEqual(scenario["share"], 0.99)
 
     def test_recent_counts_runs_of_last_30_days(self):
