@@ -9,6 +9,7 @@ WORDS = {
     "scenario": {"ru": ("сценарий", "сценария", "сценариев"), "en": ("scenario", "scenarios")},
     "session": {"ru": ("сессия", "сессии", "сессий"), "en": ("session", "sessions")},
     "day": {"ru": ("день", "дня", "дней"), "en": ("day", "days")},
+    "block": {"ru": ("блок", "блока", "блоков"), "en": ("block", "blocks")},
     "boundary": {"ru": ("граница", "границы", "границ"), "en": ("boundary", "boundaries")},
     "category": {"ru": ("категория", "категории", "категорий"), "en": ("category", "categories")},
 }
@@ -129,18 +130,14 @@ MESSAGES = {
     "col.end": {"ru": "к концу", "en": "by end"},
     "col.runs_ba": {"ru": "прог д/п", "en": "runs b/a"},
 
-    # ── форма сессии ──
-    "shape.title": {"ru": "ФОРМА СЕССИИ", "en": "SESSION SHAPE"},
-    "shape.title_avg": {"ru": "ФОРМА СЕССИИ · среднее по {n} {n:session}",
-                        "en": "SESSION SHAPE · average of {n} {n:session}"},
-    "shape.first_24": {"ru": "показаны первые 24 прогона из {n}", "en": "first 24 of {n} runs shown"},
-    "shape.run": {"ru": "прогон", "en": "run"},
-    "shape.level": {"ru": "уровень", "en": "level"},
-    "shape.sessions": {"ru": "сессий", "en": "sessns"},
-    "shape.sessions_note": {"ru": "строка «сессий» — сколько сессий дотянули до этого прогона",
-                            "en": "“sessns” row — how many sessions reached this run"},
-    "shape.single_note": {"ru": "по одной сессии это шум: устойчивую картину смотреть через --days 14",
-                          "en": "one session is noise: use --days 14 for a stable picture"},
+    # ── вход в сценарий ──
+    "entry.title": {"ru": "ВХОД В СЦЕНАРИЙ", "en": "SCENARIO ENTRY"},
+    "entry.line": {"ru": "первый прогон блока {cost}σ к остальным (95%: {low}…{high}) · {blocks} {blocks:block} · {sessions} {sessions:session}",
+                   "en": "first run of a block {cost}σ vs the rest (95%: {low}…{high}) · {blocks} {blocks:block} · {sessions} {sessions:session}"},
+    "entry.method": {"ru": "каждый прогон — против нормы сценария до его сессии; одиночные блоки учитываются",
+                     "en": "each run vs its scenario's norm before the session; single-run blocks count too"},
+    "entry.few": {"ru": "мало сессий с нормой — цену входа пока не посчитать",
+                  "en": "too few sessions with a baseline to measure the entry cost yet"},
 
     # ── план и легенда ──
     "todo.title": {"ru": "ВЗЯТЬ В РАБОТУ ({n} шт.)", "en": "WORK ON NEXT ({n})"},
@@ -316,7 +313,6 @@ MESSAGES = {
     "ui.recent": {"ru": "только сыгранные за 30 дней", "en": "only played in the last 30 days"},
     "ui.eb_diag": {"ru": "Диагноз", "en": "Diagnosis"},
     "ui.h_session": {"ru": "Последняя сессия", "en": "Last session"},
-    "ui.shape_title": {"ru": "Форма сессии", "en": "Session shape"},
     "ui.todo_title": {"ru": "Взять в работу", "en": "Work on next"},
     "ui.eb_journal": {"ru": "Журнал", "en": "Log"},
     "ui.h_changes": {"ru": "Что дало каждое изменение", "en": "What each change did"},
@@ -375,15 +371,13 @@ MESSAGES = {
     "ui.s_run": {"ru": "прогон", "en": "run"},
     "ui.s_median": {"ru": "медиана 7", "en": "median 7"},
 
+    "ui.entry_title": {"ru": "Вход в сценарий", "en": "Scenario entry"},
+    "ui.entry_sub": {"ru": "первый прогон блока против остальных", "en": "first run of a block vs the rest"},
+    "ui.entry_ci": {"ru": "95% интервал", "en": "95% interval"},
+    "ui.entry_data": {"ru": "данные", "en": "data"},
     "ui.ses_aside": {"ru": "{date} {start} — {end} · {n} {n:run} · {m} мин", "en": "{date} {start} — {end} · {n} {n:run} · {m} min"},
     "ui.cross_title": {"ru": "база захватывает время до последнего изменения", "en": "the baseline reaches back past the last change"},
     "ui.no_hints": {"ru": "Пояснений нет: всё ровно или без базы.", "en": "Nothing to explain: all steady or without a baseline."},
-    "ui.shape_note": {"ru": "столбик — прогон против нормы своего сценария, в разбросах; по одной сессии это шум",
-                      "en": "bar — a run against its scenario's norm, in spreads; a single session is noise"},
-    "ui.shape_few": {"ru": "для средней формы мало сессий", "en": "too few sessions for an average shape"},
-    "ui.s_session": {"ru": "сессия", "en": "session"},
-    "ui.s_14days": {"ru": "14 дней", "en": "14 days"},
-    "ui.tip_avg14": {"ru": "в среднем за 14 дн.", "en": "14-day average"},
 
     "ui.changes_empty": {"ru": "Журнал пуст. Строка в changes.txt:", "en": "The log is empty. A line in changes.txt:"},
     "ui.changes_example": {"ru": "новые глайды", "en": "new skates"},

@@ -31,12 +31,18 @@ class PayloadTest(unittest.TestCase):
         payload = dash.source_payload("X", runs, [], T0 + timedelta(days=1))
         self.assertEqual({s["name"] for s in payload["scenarios"]}, {"A", "B"})
         self.assertEqual(payload["session"]["n"], 20)
-        self.assertEqual(len(payload["session"]["shape"]["points"]), 20)
-        # разминка и спад на истории не отличались от случайного порядка — вердиктов нет
-        self.assertEqual(set(payload["session"]["shape"]), {"points"})
-        self.assertEqual(set(payload["shape14"]), {"points"})
+        self.assertNotIn("shape", payload["session"])   # форму сессии заменил вход в сценарий
+        self.assertNotIn("shape14", payload)
+        self.assertIsNone(payload["entry"])              # одна сессия — цены входа нет
         self.assertIsNone(payload["session"]["breakDays"])   # первая сессия — перерыва нет
         json.dumps(dash.clean(payload))   # всё сериализуется
+
+    def test_entry_cost_over_history(self):
+        runs = [run(day * 24 * 60 + i * 2, 100 if i % 3 else 95, "AB"[i // 3])
+                for day in range(10) for i in range(6)]
+        entry = dash.source_payload("X", runs, [], T0 + timedelta(days=11))["entry"]
+        self.assertEqual(set(entry), {"cost", "low", "high", "blocks", "sessions", "scenarios"})
+        self.assertLess(entry["cost"], 0)
 
     def test_session_after_long_break_reports_days_and_hint(self):
         history = [run(i * 2, 100) for i in range(12)]

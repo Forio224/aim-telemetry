@@ -474,31 +474,20 @@ function renderSession(src) {
   $("#todo").innerHTML = ses.todo.length
     ? ses.todo.map(t => `<li><span>${esc(t.scenario)} ${labelChip(t.label)}</span><span class="act">${esc(T("todo." + t.label))}</span></li>`).join("")
     : `<li><span>—</span><span class="act">${T("todo.none")}</span></li>`;
-  renderShape(src);
+  renderEntry(src);
 }
 
-function renderShape(src) {
-  const pts = src.session.shape.points, avg = src.shape14.points;
-  $("#shape-note").textContent = T("ui.shape_note") + (avg.length ? "" : " · " + T("ui.shape_few"));
-  const c = chart("shape");
-  if (!c) return;
-  const good = css("--good"), bad = css("--bad");
-  c.setOption({
-    ...baseChart(),
-    grid: {left: 40, right: 14, top: 26, bottom: 30},
-    legend: {top: 0, right: 8, textStyle: {color: css("--muted"), fontSize: 11}, itemWidth: 14, itemHeight: 8},
-    tooltip: {...baseChart().tooltip, trigger: "item", formatter: p => p.seriesId === "session"
-      ? `#${p.dataIndex + 1} ${esc(pts[p.dataIndex].scenario)}<br><b>${n1(pts[p.dataIndex].score)}</b> · ${T("shape.level")} ${p.value.toFixed(1)}`
-      : `${T("ui.tip_avg14")}<br>#${p.dataIndex + 1}: ${p.value.toFixed(2)} · ${avg[p.dataIndex].sessions} ${word("session", avg[p.dataIndex].sessions)}`},
-    xAxis: {type: "category", data: pts.map(p => p.index), ...axisStyle(), splitLine: {show: false}},
-    yAxis: {type: "value", ...axisStyle(), min: v => Math.min(-2, Math.floor(v.min)), max: v => Math.max(2, Math.ceil(v.max))},
-    series: [
-      {id: "session", name: T("ui.s_session"), type: "bar", barMaxWidth: 16,
-        data: pts.map(p => ({value: +p.level.toFixed(2), itemStyle: {color: p.level >= 0 ? good : bad, opacity: .85, borderRadius: 2}}))},
-      {id: "avg14", name: T("ui.s_14days"), type: "line", data: avg.slice(0, pts.length).map(p => +p.level.toFixed(2)), showSymbol: false,
-        lineStyle: {color: css("--signal"), width: 2}, z: 5},
-    ],
-  });
+const sigma = v => `${v < 0 ? "−" : "+"}${Math.abs(v).toFixed(2)}σ`;
+
+function renderEntry(src) {
+  const e = src.entry;
+  $("#entry").innerHTML = e
+    ? `<div class="entry-val">${sigma(e.cost)}</div>
+       <div class="entry-sub">${T("ui.entry_sub")}</div>
+       <dl><dt>${T("ui.entry_ci")}</dt><dd>${sigma(e.low)} … ${sigma(e.high)}</dd>
+           <dt>${T("ui.entry_data")}</dt><dd>${e.blocks} ${word("block", e.blocks)} · ${e.sessions} ${word("session", e.sessions)}</dd></dl>
+       <div class="entry-note">${T("entry.method")}</div>`
+    : `<div class="entry-note">${T("entry.few")}</div>`;
 }
 
 /* ── изменения ── */
