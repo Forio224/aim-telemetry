@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from typing import NamedTuple
 
 from .i18n import t
-from .model import Run, median, spread
+from .model import Run, median, same_sens, spread
 
 POINT_RUNS = 5          # сколько прогонов в каждой точке «до / сразу / к концу»
 MIN_SIDE_RUNS = 3       # меньше с любой стороны — сценарий в сравнение не идёт
@@ -88,8 +88,10 @@ def dominant_sens(runs: list[Run]) -> list[Run]:
     """Прогоны на самой частой сенсе стороны — случайные прогоны на чужой отбрасываем."""
     if not runs:
         return runs
-    sens = Counter(r.sens for r in runs).most_common(1)[0][0]
-    return [r for r in runs if r.sens == sens]
+    # сенсы в пределах SENS_TOLERANCE — одна, как и в нормах (diagnose)
+    counts = Counter(r.sens for r in runs)
+    sens = max(counts, key=lambda s: sum(n for other, n in counts.items() if same_sens(other, s)))
+    return [r for r in runs if same_sens(r.sens, sens)]
 
 
 def scenario_shift(scenario: str, before: list[Run], after: list[Run]) -> Shift | None:

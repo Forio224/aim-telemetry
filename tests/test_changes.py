@@ -64,6 +64,15 @@ class ShiftTest(unittest.TestCase):
         runs = [run(0, 100), run(1, 100), run(2, 100), run(3, 999, sens="32")]
         self.assertEqual(len(ch.dominant_sens(runs)), 3)
 
+    def test_dominant_sens_uses_same_tolerance_as_baseline(self):
+        # 46.65 и 46.650002 — одна сенса, вместе их больше, чем прогонов на 32
+        runs = ([run(i, 100) for i in range(2)]
+                + [run(2 + i, 100, sens="46.650002") for i in range(2)]
+                + [run(4 + i, 999, sens="32") for i in range(3)])
+        kept = ch.dominant_sens(runs)
+        self.assertEqual(len(kept), 4)
+        self.assertTrue(all(r.score == 100 for r in kept))
+
 
 if __name__ == "__main__":
     unittest.main()
