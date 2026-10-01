@@ -98,8 +98,11 @@ class WriteTest(unittest.TestCase):
                 html = fh.read()
         self.assertNotIn(dash.PLACEHOLDER, html)
         self.assertEqual(len(re.findall(r"</script>", html)), 2)   # только теги самой страницы
-        payload = re.search(r"const DATA = (.*?);\n", html).group(1)
-        self.assertEqual(json.loads(payload)["testDate"], "2026-10-13")
+        payload = json.loads(re.search(r"const DATA = (.*?);\n", html).group(1))
+        self.assertEqual(payload["testDate"], "2026-10-13")
+        # бенчмарк по клику: адрес API для браузера и разбор, сверенный с bench.py
+        self.assertEqual(payload["benchUrl"], kovaaks_api.BENCH_URL)
+        self.assertIn("const BENCH = ", html)
 
 
 if __name__ == "__main__":

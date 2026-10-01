@@ -3,7 +3,8 @@
 Собирает всё, что считает консольный отчёт, в JSON и вместе со стилями,
 скриптом и библиотекой графиков из папки web/ складывает в один файл. Данные
 не покидают компьютер, страница работает без сети; из сети грузятся только
-шрифты (без них — системные) и бенчмарки с kovaaks.com при сборке.
+шрифты (без них — системные), бенчмарки с kovaaks.com при сборке и бенчмарк
+из каталога — только когда его выбрали на странице.
 """
 
 import json
@@ -29,7 +30,7 @@ from .report import (
 
 # куски страницы в web/ и места, куда они встают в template.html
 PARTS = {"/*__CSS__*/": "dashboard.css", "/*__ECHARTS__*/": "echarts.min.js",
-         "/*__JS__*/": "dashboard.js"}
+         "/*__BENCH_JS__*/": "bench_live.js", "/*__JS__*/": "dashboard.js"}
 PLACEHOLDER = "/*__AIM_DATA__*/null"
 
 RECENT_DAYS = 30       # вкладка по умолчанию — тренажёр, где больше попыток за этот срок
@@ -227,10 +228,11 @@ def page(data: dict) -> str:
 
 
 def write_dashboard(sources: dict[str, dict], changes: list[aim_changes.Change],
-                    test_date: str | None, out_path: str, bench_file: str | None = None) -> str:
+                    test_date: str | None, out_path: str) -> str:
     data = clean({
         "generated": ts(datetime.now()), "testDate": test_date, "version": __version__,
-        "benchFile": bench_file,
+        # бенчмарк из каталога страница загружает сама, по клику — тем же запросом, что сборка
+        "benchUrl": kovaaks_api.BENCH_URL,
         "changes": [{"t": ts(c.when), "text": c.text} for c in changes],
         "sources": sources, "i18n": i18n.catalog(),
     })

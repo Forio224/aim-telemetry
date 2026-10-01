@@ -88,6 +88,7 @@ class CliTest(unittest.TestCase):
         with open(out_path, encoding="utf-8") as fh:
             html = fh.read()
         self.assertIn('"Track A"', html)
+        self.assertIn('"steamId":"1"', html)   # нужен странице, чтобы загрузить бенчмарк по клику
         self.assertNotIn("/*__", html)          # все куски страницы подставлены
         self.assertIn("echarts", html)          # библиотека встроена, сеть не нужна
 

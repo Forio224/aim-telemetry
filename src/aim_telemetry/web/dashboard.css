@@ -298,8 +298,6 @@ details.legend dd { margin: 0; }
   display: block; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--line-2);
   border-radius: 6px; user-select: all; overflow-x: auto;
 }
-.copy { justify-self: start; border: 1px solid var(--line-2); background: var(--panel); color: var(--text); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
-.copy:hover { border-color: var(--signal); }
 .overview-wrap { max-height: 460px; overflow-y: auto; }
 #overview thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
 .tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--signal-dim); color: var(--signal); margin-left: 6px; }

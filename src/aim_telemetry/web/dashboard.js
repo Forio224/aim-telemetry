@@ -181,6 +181,7 @@ function renderBenchOptions(src, q) {
 
 function pickBench(src, id) {
   state.bench = id;
+  if (live[id] && live[id].state === "error") delete live[id];
   try { localStorage.setItem("aim-bench-id", String(id)); } catch (e) { /* хранилище недоступно — не страшно */ }
   renderHero(src);
   renderCategories(src);
@@ -213,19 +214,43 @@ function renderBenchPick(src) {
   $(".bench-menu").addEventListener("keydown", e => { if (e.key === "Escape") { toggleBenchMenu(src, false); $(".bench-current").focus(); } });
 }
 
-function benchBrief(src, b) {
-  const line = `${b.id}  # ${b.name}`;
-  $("#gauges").innerHTML = `<div class="bench-brief">
-    <h3>${esc(b.name)}</h3>
-    <div class="rk" style="color:${b.color || css("--muted")}">${esc(b.rank || T("ui.bench_no_rank"))}</div>
-    <p>${b.author ? esc(T("ui.bench_by", {author: b.author})) + " · " : ""}${T("ui.site_rank")}</p>
-    <p>${T("ui.bench_brief", {file: `<b>${esc(DATA.benchFile || "benchmarks.txt")}</b>`})}</p>
-    <code>${esc(line)}</code><button class="copy" type="button">${T("ui.copy")}</button></div>`;
+/* Бенчмарк не из избранных грузится с kovaaks.com по клику и разбирается BENCH.analyze
+   (bench_live.js — то же, что bench.py). Ответ живёт до перезагрузки страницы. */
+const live = {};                 // id → {state: "loading" | "ok" | "error", bench, error}
+const LOAD_TIMEOUT_MS = 15000;
+
+async function loadBench(src, entry) {
+  live[entry.id] = {state: "loading"};
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), LOAD_TIMEOUT_MS);
+  try {
+    const url = DATA.benchUrl.replace("%d", entry.id).replace("%s", encodeURIComponent(src.steamId));
+    const resp = await fetch(url, {signal: ctl.signal});
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+    live[entry.id] = {state: "ok", bench: BENCH.analyze(entry.id, entry.name, data, src.scenarios, src.sensList,
+                                                        src.session.setup.sens, DATA.generated)};
+  } catch (e) {
+    live[entry.id] = {state: "error", error: e.name === "AbortError" ? T("ui.bench_timeout") : String(e.message || e)};
+  } finally {
+    clearTimeout(timer);
+  }
+  if (state.bench === entry.id && DATA.sources[state.source] === src) renderCategories(src);
+}
+
+function benchMessage(entry, text) {
+  $("#gauges").innerHTML = `<div class="bench-brief"><h3>${esc(entry.name)}</h3>
+    ${entry.rank ? `<div class="rk" style="color:${entry.color || css("--muted")}">${esc(entry.rank)}</div>` : ""}
+    <p>${text}</p></div>`;
   $("#advice").innerHTML = "";
-  $("#gauges .copy").addEventListener("click", e => {
-    const done = () => { e.target.textContent = T("ui.copied"); };
-    if (navigator.clipboard) navigator.clipboard.writeText(line).then(done, () => {}); else done();
-  });
+}
+
+/* Бенчмарка ещё нет на странице: загрузить, показать загрузку или ошибку. */
+function benchPending(src, entry) {
+  if (!src.steamId || !DATA.benchUrl) return benchMessage(entry, T("ui.bench_need_steam"));
+  const got = live[entry.id];
+  if (!got) loadBench(src, entry);
+  if (!got || got.state === "loading") return benchMessage(entry, T("ui.bench_loading", {name: esc(entry.name)}));
+  benchMessage(entry, T("ui.bench_load_failed", {error: esc(got.error)}));
 }
 
 /* ── герой ── */
@@ -364,15 +389,16 @@ function renderCategories(src) {
   $("#cats-section").classList.toggle("hidden", !list.length && !catalog.length);
   if (!list.length && !catalog.length) return;
   renderBenchPick(src);
-  const id = selectedId(src), bench = list.find(b => b.id === id);
+  const id = selectedId(src), fav = list.find(b => b.id === id), got = live[id];
+  const bench = fav && !fav.error ? fav : got && got.state === "ok" ? got.bench : null;
   $(".cats").classList.toggle("solo", !bench);
-  $("#cats-aside").textContent = bench ? T("ui.cats_aside", {id}) : "id " + id;
-  if (!bench) return benchBrief(src, catalog.find(b => b.id === id));
-  if (bench.error) {
-    $("#gauges").innerHTML = `<div class="empty">${T("ui.bench_failed", {error: esc(bench.error)})}</div>`;
+  $("#cats-aside").textContent = bench ? T("ui.cats_aside", {id}) + (fav ? "" : " · " + T("ui.bench_live")) : "id " + id;
+  if (fav && fav.error) {
+    $("#gauges").innerHTML = `<div class="empty">${T("ui.bench_failed", {error: esc(fav.error)})}</div>`;
     $("#advice").innerHTML = "";
     return;
   }
+  if (!bench) return benchPending(src, catalog.find(b => b.id === id) || {id, name: "#" + id});
   const sc = makeScale(bench);
   const bands = sc.names.map((n, i) => {
     const from = sc.marks[i], to = sc.marks[i + 1] ?? sc.max;
