@@ -1,10 +1,9 @@
-"""Расчёты отчёта без вывода: окно, сессии, форма сессии, строки таблицы, план.
+"""Расчёты отчёта без вывода: окно, сессии, перерыв, строки таблицы, план.
 
 Общая часть для консоли (cli) и дашборда (dashboard). Метки и действия — коды,
 тексты к ним — в messages.
 """
 
-import statistics
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
@@ -23,26 +22,15 @@ from .diagnose import (
     progress,
 )
 from .i18n import t
-from .model import SPREAD_FLOOR, Run, cv, mean, median, same_sens
+from .model import Run, cv, mean, median, same_sens
 
 # разрыв между прогонами, после которого считаем, что началась новая сессия
 SESSION_GAP = timedelta(minutes=40)
 # перерыв, после которого сессия в среднем ниже нормы (~0.4σ на истории автора)
 LONG_BREAK = timedelta(days=3)
 
-SHAPE_MIN_RUNS = 5     # сессии короче не несут информации о форме
-
 # порядок в «взять в работу»; действие к метке — todo.<код> в messages
 TODO_PRIORITY = {BELOW: 0, UNSTABLE: 1, PLATEAU: 2, CEILING: 2, EVEN: 3}
-
-
-class ShapePoint(NamedTuple):
-    """Одна позиция в форме сессии."""
-
-    index: int
-    level: float
-    sessions: int
-    minutes: float
 
 
 class TodoItem(NamedTuple):
@@ -100,56 +88,6 @@ def pick_window(runs: list[Run], days: int | None, session: int) -> tuple[list[R
     index = min(session, len(sessions))
     title = t("window.last") if index == 1 else t("window.nth", n=index)
     return sessions[-index], title
-
-
-# ── форма сессии ─────────────────────────────────────────────────────────────
-
-def z_scores(window: list[Run], baselines: dict[str, Baseline]) -> list[float]:
-    """Результат каждого прогона в единицах разброса своего сценария."""
-    out = []
-    for run in window:
-        base = baselines.get(run.scenario)
-        # по двум-трём прогонам разброс почти нулевой и z взлетает — берём само окно
-        pool = (base.scores if base and len(base.scores) >= MIN_HISTORY
-                else [r.score for r in window if r.scenario == run.scenario])
-        if len(pool) < 2:
-            out.append(0.0)
-            continue
-        center = statistics.mean(pool)
-        # пол разброса: иначе сценарий с разбросом 1% рисует ложный «спад»
-        width = max(statistics.pstdev(pool), SPREAD_FLOOR * center)
-        out.append((run.score - center) / width if width else 0.0)
-    return out
-
-
-def session_shape(window: list[Run], baselines: dict[str, Baseline]) -> list[ShapePoint]:
-    """Форма одной сессии: уровень каждого прогона по порядку."""
-    start = window[0].when
-    return [ShapePoint(i + 1, z, 1, (run.when - start).total_seconds() / 60)
-            for i, (z, run) in enumerate(zip(z_scores(window, baselines), window))]
-
-
-def aggregate_shape(sessions: list[list[Run]],
-                    baselines: dict[str, Baseline]) -> list[ShapePoint]:
-    """Усредняет форму по всем сессиям окна, выравнивая их по номеру прогона.
-
-    Каждый прогон переводится в z-единицы своего сценария, поэтому сессии
-    с разным набором сценариев складываются между собой корректно.
-    """
-    usable = [s for s in sessions if len(s) >= SHAPE_MIN_RUNS]
-    if len(usable) < 2:
-        return []
-
-    curves = [(z_scores(session, baselines), session) for session in usable]
-    need = max(2, len(usable) // 2)
-    points = []
-    for i in range(max(len(z) for z, _ in curves)):
-        levels = [z[i] for z, _ in curves if i < len(z)]
-        if len(levels) < need:
-            break
-        elapsed = [(s[i].when - s[0].when).total_seconds() / 60 for _, s in curves if i < len(s)]
-        points.append(ShapePoint(i + 1, mean(levels), len(levels), statistics.median(elapsed)))
-    return points
 
 
 # ── строки таблицы и план ────────────────────────────────────────────────────

@@ -20,17 +20,15 @@ from datetime import datetime
 from . import __version__, aimbeast, bench, config, dashboard, kovaaks, kovaaks_api
 from . import changes as journal
 from .diagnose import MIN_HISTORY, NO_BASE, Baseline, build_baselines
+from .entry import entry_cost
 from .i18n import LANGS, set_lang, t
 from .model import Run
 from .report import (
-    ShapePoint,
-    aggregate_shape,
     aimbeast_to_runs,
     break_before,
     hint_text,
     pick_window,
     scenario_table,
-    session_shape,
     split_sessions,
     todo,
 )
@@ -136,40 +134,19 @@ def print_scenarios(window: list[Run], runs: list[Run], baselines: dict[str, Bas
     return table
 
 
-# ── вывод: форма, план, легенда ──────────────────────────────────────────────
+# ── вывод: вход, план, легенда ───────────────────────────────────────────────
 
-def print_shape_rows(points: list[ShapePoint], with_sessions: bool) -> None:
-    if len(points) > 24:
-        print("  " + t("shape.first_24", n=len(points)))
-    rows = [("  %-7s" % t("shape.run"), "%6d", lambda p: p.index),
-            ("  %-7s" % t("shape.level"), "%+6.1f", lambda p: p.level)]
-    if with_sessions:
-        rows.append(("  %-7s" % t("shape.sessions"), "%6d", lambda p: p.sessions))
-    for title, fmt, pick in rows:
-        print(title + "".join(fmt % pick(point) for point in points[:24]))
-
-
-def print_shape(window: list[Run], baselines: dict[str, Baseline], aggregate: bool) -> None:
-    """Форма сессии: одна сессия целиком или среднее по всем сессиям окна."""
-    if aggregate:
-        sessions = split_sessions(window)
-        points = aggregate_shape(sessions, baselines)
-        if not points:
-            if len(sessions) == 1:
-                print_shape(window, baselines, aggregate=False)
-            return
-        print(t("shape.title_avg", n=max(point.sessions for point in points)))
-        print_shape_rows(points, with_sessions=True)
-        print("  " + t("shape.sessions_note"))
-        print()
-        return
-
-    if len(window) < 6:
-        return
-    points = session_shape(window, baselines)
-    print(t("shape.title"))
-    print_shape_rows(points, with_sessions=False)
-    print("  " + t("shape.single_note"))
+def print_entry(runs: list[Run], changes: list) -> None:
+    """Цена входа в сценарий по всей истории источника."""
+    print(t("entry.title"))
+    cost = entry_cost(runs, changes)
+    if cost is None:
+        print("  " + t("entry.few"))
+    else:
+        print("  " + t("entry.line", cost="%+.2f" % cost.cost, low="%+.2f" % cost.low,
+                       high="%+.2f" % cost.high, blocks=cost.blocks, sessions=cost.sessions))
+        print("  " + t("entry.method"))
+        print("  " + t("entry.bias"))
     print()
 
 
@@ -441,7 +418,7 @@ def session_report(cfg: config.Config, args: argparse.Namespace, changes: list) 
         print_environment(window, excluded)
     print_change_note(change, baselines, window[-1].when)
     table = print_scenarios(window, runs, baselines, cutoff, break_days)
-    print_shape(window, baselines, aggregate=bool(args.days))
+    print_entry(runs, changes)
     print_todo(table, args.top)
     print_legend()
 

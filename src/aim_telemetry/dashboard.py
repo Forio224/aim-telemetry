@@ -17,12 +17,11 @@ from . import __version__, i18n, kovaaks_api
 from . import bench as aim_bench
 from . import changes as aim_changes
 from .diagnose import build_baselines, progress
+from .entry import entry_cost
 from .model import Run, same_sens
 from .report import (
-    aggregate_shape,
     break_before,
     scenario_table,
-    session_shape,
     split_sessions,
     todo,
 )
@@ -32,7 +31,6 @@ PARTS = {"/*__CSS__*/": "dashboard.css", "/*__ECHARTS__*/": "echarts.min.js",
          "/*__JS__*/": "dashboard.js"}
 PLACEHOLDER = "/*__AIM_DATA__*/null"
 
-SHAPE_DAYS = 14        # средняя форма сессии — по последним двум неделям
 TODO_TOP = 5
 NEAREST_TOP = 6
 RUN_MINUTES = 1.0      # длительность последнего прогона сессии, которой нет в разнице времени
@@ -94,13 +92,7 @@ def days_payload(runs: list[Run]) -> list[dict]:
     return [{"d": d, **v} for d, v in sorted(days.items())]
 
 
-# ── сессия и форма ───────────────────────────────────────────────────────────
-
-def shape_payload(points) -> dict:
-    """Только уровни прогонов. Вердиктов «разминка» и «спад» нет: на истории
-    автора они срабатывали так же часто, как на перемешанных прогонах."""
-    return {"points": [p._asdict() for p in points]}
-
+# ── сессия и вход в сценарий ─────────────────────────────────────────────────
 
 def session_payload(runs: list[Run], changes: list[aim_changes.Change]) -> dict:
     window = split_sessions(runs)[-1]
@@ -109,24 +101,19 @@ def session_payload(runs: list[Run], changes: list[aim_changes.Change]) -> dict:
     baselines, _ = build_baselines(runs, window, cutoff)
     break_days = break_before(runs, window)
     table = scenario_table(window, runs, baselines, cutoff, break_days)
-    shape = shape_payload(session_shape(window, baselines))
-    for point, run in zip(shape["points"], window):
-        point.update(scenario=run.scenario, score=run.score)
     return {
         "start": ts(window[0].when), "end": ts(window[-1].when), "n": len(window),
-        "breakDays": break_days, "rows": table, "shape": shape,
+        "breakDays": break_days, "rows": table,
         "todo": [item._asdict() for item in todo(table, TODO_TOP)],
         "setup": {"sens": window[-1].sens, "dpi": window[-1].dpi, "fov": window[-1].fov,
                   "res": window[-1].res},
     }
 
 
-def average_shape_payload(runs: list[Run], changes: list[aim_changes.Change]) -> dict:
-    cutoff_day = runs[-1].when.timestamp() - SHAPE_DAYS * 86400
-    window = [r for r in runs if r.when.timestamp() >= cutoff_day]
-    change = aim_changes.last_change(changes, window[0].when)
-    baselines, _ = build_baselines(runs, window, change.when if change else None)
-    return shape_payload(aggregate_shape(split_sessions(window), baselines))
+def entry_payload(runs: list[Run], changes: list[aim_changes.Change]) -> dict | None:
+    """Цена входа в сценарий по всей истории — не по последней сессии."""
+    cost = entry_cost(runs, changes)
+    return cost._asdict() if cost else None
 
 
 def changes_payload(runs: list[Run], changes: list[aim_changes.Change]) -> list[dict]:
@@ -181,7 +168,7 @@ def source_payload(label: str, runs: list[Run], changes: list[aim_changes.Change
     return {
         "label": label, "scenarios": scenarios, "sensList": sens_list,
         "days": days_payload(runs), "session": session_payload(runs, changes),
-        "shape14": average_shape_payload(runs, changes),
+        "entry": entry_payload(runs, changes),
         "changes": changes_payload(runs, changes), **(extra or {}),
     }
 
