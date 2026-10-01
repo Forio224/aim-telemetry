@@ -486,7 +486,7 @@ function renderEntry(src) {
        <div class="entry-sub">${T("ui.entry_sub")}</div>
        <dl><dt>${T("ui.entry_ci")}</dt><dd>${sigma(e.low)} … ${sigma(e.high)}</dd>
            <dt>${T("ui.entry_data")}</dt><dd>${e.blocks} ${word("block", e.blocks)} · ${e.sessions} ${word("session", e.sessions)}</dd></dl>
-       <div class="entry-note">${T("entry.method")}</div>`
+       <div class="entry-note">${T("entry.method")}. ${T("entry.bias")}.</div>`
     : `<div class="entry-note">${T("entry.few")}</div>`;
 }
 

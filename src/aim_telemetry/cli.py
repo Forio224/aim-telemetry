@@ -146,6 +146,7 @@ def print_entry(runs: list[Run], changes: list) -> None:
         print("  " + t("entry.line", cost="%+.2f" % cost.cost, low="%+.2f" % cost.low,
                        high="%+.2f" % cost.high, blocks=cost.blocks, sessions=cost.sessions))
         print("  " + t("entry.method"))
+        print("  " + t("entry.bias"))
     print()
 
 

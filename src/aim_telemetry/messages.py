@@ -136,6 +136,8 @@ MESSAGES = {
                    "en": "first run of a block {cost}σ vs the rest (95%: {low}…{high}) · {blocks} {blocks:block} · {sessions} {sessions:session}"},
     "entry.method": {"ru": "каждый прогон — против нормы сценария до его сессии; одиночные блоки учитываются",
                      "en": "each run vs its scenario's norm before the session; single-run blocks count too"},
+    "entry.bias": {"ru": "слабые первые прогоны чаще ведут к продолжению блока; при сохранении состояния это смещает оценку к нулю",
+                   "en": "a weak first run more often leads to continuing the block; if the state carries over, this pulls the estimate toward zero"},
     "entry.few": {"ru": "мало сессий с нормой — цену входа пока не посчитать",
                   "en": "too few sessions with a baseline to measure the entry cost yet"},
 

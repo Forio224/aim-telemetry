@@ -1,5 +1,6 @@
 """Тесты цены входа в сценарий: python -m pytest tests"""
 
+import random
 import unittest
 from datetime import datetime, timedelta
 
@@ -83,6 +84,24 @@ class EntryCostTest(unittest.TestCase):
         entries = [z for s in entry.session_levels(runs, []) for z in s.entries]
         self.assertGreater(sum(entries) / len(entries), 1)   # против прошлой нормы вход «выше»
         self.assertLess(abs(entry.entry_cost(runs, []).cost), 0.2)
+
+    def test_continuing_after_weak_first_pulls_cost_toward_zero(self):
+        # прогон = состояние блока + шум, первый ниже на TRUE; блок продолжают после
+        # слабого первого. Состояние держится — «остальные» из продолженных блоков
+        # ниже среднего, и оценка сжимается к нулю, а не раздувается
+        true_cost, rng = -0.5, random.Random(7)
+        sample = []
+        for _ in range(2000):
+            found = entry.SessionLevels([], [], set())
+            for _ in range(5):
+                state = rng.gauss(0, 0.7)
+                first = state + rng.gauss(0, 1) + true_cost
+                found.entries.append(first)
+                if first < -0.3:
+                    found.others.extend(state + rng.gauss(0, 1) for _ in range(2))
+            sample.append(found)
+        self.assertLess(true_cost, entry.gap(sample))
+        self.assertLess(entry.gap(sample), 0)
 
     def test_too_few_sessions_give_nothing(self):
         self.assertIsNone(entry.entry_cost(sessions(history(3)), []))
