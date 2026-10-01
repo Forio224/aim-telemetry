@@ -32,6 +32,9 @@ class PayloadTest(unittest.TestCase):
         self.assertEqual({s["name"] for s in payload["scenarios"]}, {"A", "B"})
         self.assertEqual(payload["session"]["n"], 20)
         self.assertEqual(len(payload["session"]["shape"]["points"]), 20)
+        # разминка и спад на истории не отличались от случайного порядка — вердиктов нет
+        self.assertEqual(set(payload["session"]["shape"]), {"points"})
+        self.assertEqual(set(payload["shape14"]), {"points"})
         self.assertIsNone(payload["session"]["breakDays"])   # первая сессия — перерыва нет
         json.dumps(dash.clean(payload))   # всё сериализуется
 

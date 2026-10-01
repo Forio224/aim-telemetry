@@ -30,7 +30,6 @@ SESSION_GAP = timedelta(minutes=40)
 # перерыв, после которого сессия в среднем ниже нормы (~0.4σ на истории автора)
 LONG_BREAK = timedelta(days=3)
 
-SHAPE_STEP = 0.4       # сдвиг в z-единицах, который считаем значимым
 SHAPE_MIN_RUNS = 5     # сессии короче не несут информации о форме
 
 # порядок в «взять в работу»; действие к метке — todo.<код> в messages
@@ -121,25 +120,6 @@ def z_scores(window: list[Run], baselines: dict[str, Baseline]) -> list[float]:
         width = max(statistics.pstdev(pool), SPREAD_FLOOR * center)
         out.append((run.score - center) / width if width else 0.0)
     return out
-
-
-def find_warmup(zs: list[float]) -> int:
-    """Сколько первых прогонов заметно слабее остальных."""
-    for k in range(1, min(5, len(zs) - 2)):
-        if mean(zs[k:]) - mean(zs[:k]) > SHAPE_STEP:
-            return k
-    return 0
-
-
-def find_fatigue(zs: list[float], warmup: int) -> int:
-    """С какого прогона начинается устойчивый спад к концу сессии."""
-    if len(zs) < 9:
-        return 0
-    tail = zs[-3:]
-    body = zs[warmup:-3]
-    if body and mean(body) - mean(tail) > SHAPE_STEP:
-        return len(zs) - 3
-    return 0
 
 
 def session_shape(window: list[Run], baselines: dict[str, Baseline]) -> list[ShapePoint]:

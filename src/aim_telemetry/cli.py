@@ -27,8 +27,6 @@ from .report import (
     aggregate_shape,
     aimbeast_to_runs,
     break_before,
-    find_fatigue,
-    find_warmup,
     hint_text,
     pick_window,
     scenario_table,
@@ -151,20 +149,6 @@ def print_shape_rows(points: list[ShapePoint], with_sessions: bool) -> None:
         print(title + "".join(fmt % pick(point) for point in points[:24]))
 
 
-def print_shape_verdict(points: list[ShapePoint]) -> None:
-    levels = [point.level for point in points]
-    warmup = find_warmup(levels)
-    fatigue = find_fatigue(levels, warmup)
-    if warmup:
-        print("  " + t("shape.warmup", n=warmup + 1, minutes=round(points[warmup].minutes)))
-    else:
-        print("  " + t("shape.no_warmup"))
-    if fatigue:
-        print("  " + t("shape.fatigue", n=fatigue + 1, minutes=round(points[fatigue].minutes)))
-    else:
-        print("  " + t("shape.no_fatigue"))
-
-
 def print_shape(window: list[Run], baselines: dict[str, Baseline], aggregate: bool) -> None:
     """Форма сессии: одна сессия целиком или среднее по всем сессиям окна."""
     if aggregate:
@@ -176,7 +160,6 @@ def print_shape(window: list[Run], baselines: dict[str, Baseline], aggregate: bo
             return
         print(t("shape.title_avg", n=max(point.sessions for point in points)))
         print_shape_rows(points, with_sessions=True)
-        print_shape_verdict(points)
         print("  " + t("shape.sessions_note"))
         print()
         return
@@ -186,7 +169,6 @@ def print_shape(window: list[Run], baselines: dict[str, Baseline], aggregate: bo
     points = session_shape(window, baselines)
     print(t("shape.title"))
     print_shape_rows(points, with_sessions=False)
-    print_shape_verdict(points)
     print("  " + t("shape.single_note"))
     print()
 

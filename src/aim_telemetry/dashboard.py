@@ -21,8 +21,6 @@ from .model import Run, same_sens
 from .report import (
     aggregate_shape,
     break_before,
-    find_fatigue,
-    find_warmup,
     scenario_table,
     session_shape,
     split_sessions,
@@ -99,10 +97,9 @@ def days_payload(runs: list[Run]) -> list[dict]:
 # ── сессия и форма ───────────────────────────────────────────────────────────
 
 def shape_payload(points) -> dict:
-    levels = [p.level for p in points]
-    warmup = find_warmup(levels) if points else 0
-    return {"points": [p._asdict() for p in points], "warmup": warmup,
-            "fatigue": find_fatigue(levels, warmup) if points else 0}
+    """Только уровни прогонов. Вердиктов «разминка» и «спад» нет: на истории
+    автора они срабатывали так же часто, как на перемешанных прогонах."""
+    return {"points": [p._asdict() for p in points]}
 
 
 def session_payload(runs: list[Run], changes: list[aim_changes.Change]) -> dict:

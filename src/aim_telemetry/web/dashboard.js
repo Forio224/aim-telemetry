@@ -477,21 +477,9 @@ function renderSession(src) {
   renderShape(src);
 }
 
-function shapeNote(src) {
-  const note = [];
-  if (src.session.shape.warmup) note.push(T("ui.shape_warmup", {n: src.session.shape.warmup}));
-  if (src.session.shape.fatigue) note.push(T("ui.shape_fatigue", {n: src.session.shape.fatigue + 1}));
-  const aw = src.shape14.warmup, af = src.shape14.fatigue;
-  note.push(src.shape14.points.length
-    ? T("ui.shape14", {w: aw ? T("ui.shape14_warmup", {n: aw}) : T("ui.shape14_no_warmup"),
-                       f: af ? T("ui.shape14_fatigue", {n: af + 1}) : T("ui.shape14_no_fatigue")})
-    : T("ui.shape_few"));
-  return note.join(" · ");
-}
-
 function renderShape(src) {
   const pts = src.session.shape.points, avg = src.shape14.points;
-  $("#shape-note").textContent = shapeNote(src);
+  $("#shape-note").textContent = T("ui.shape_note") + (avg.length ? "" : " · " + T("ui.shape_few"));
   const c = chart("shape");
   if (!c) return;
   const good = css("--good"), bad = css("--bad");

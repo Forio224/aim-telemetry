@@ -55,6 +55,9 @@ class CliTest(unittest.TestCase):
         ru = self.run_cli()
         self.assertIn("СЦЕНАРИИ", ru)
         self.assertIn("Track A", ru)
+        self.assertIn("ФОРМА СЕССИИ", ru)
+        for verdict in ("разминк", "спад"):
+            self.assertNotIn(verdict, ru)
         en = self.run_cli("--lang", "en")
         self.assertIn("SCENARIOS", en)
         self.assertNotIn("СЦЕНАРИИ", en)
