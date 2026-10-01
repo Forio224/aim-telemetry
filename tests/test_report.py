@@ -62,5 +62,33 @@ class BreakHintTest(unittest.TestCase):
         self.assertIn(["after_break", {"days": 4}], table[0]["hints"])
 
 
+class ScenarioStatusTest(unittest.TestCase):
+    def test_fewer_than_three_runs_is_too_little(self):
+        self.assertEqual(report.scenario_status([100, 100])["status"], report.FEW_DATA)
+
+    def test_last_three_near_best_are_at_max(self):
+        found = report.scenario_status([90, 100, 97, 98, 99])
+        self.assertEqual(found["status"], report.AT_MAX)
+        self.assertEqual((found["recent"], found["best"]), (98, 100))
+        self.assertAlmostEqual(found["share"], 0.98)
+
+    def test_not_at_max_without_norm_is_too_little(self):
+        # три попытки, рекорд выше — нормы до них ещё нет (нужно 6 попыток)
+        self.assertEqual(report.scenario_status([100, 80, 80, 80, 80])["status"], report.FEW_DATA)
+
+    def test_below_norm(self):
+        self.assertEqual(report.scenario_status([120, 100, 100, 100, 90, 90, 90])["status"],
+                         report.BELOW_NORM)
+
+    def test_in_norm(self):
+        self.assertEqual(report.scenario_status([120, 100, 100, 100, 98, 98, 98])["status"],
+                         report.IN_NORM)
+
+    def test_norm_uses_only_twelve_runs_before_last_three(self):
+        old = [80] * 30   # по всей истории медиана 80 и 90 было бы «в норме»
+        self.assertEqual(report.scenario_status(old + [100] * 12 + [90] * 3)["status"],
+                         report.BELOW_NORM)
+
+
 if __name__ == "__main__":
     unittest.main()

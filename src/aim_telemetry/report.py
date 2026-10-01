@@ -9,8 +9,11 @@ from typing import NamedTuple
 
 from . import aimbeast
 from .diagnose import (
+    BASELINE_RUNS,
     BELOW,
     CEILING,
+    CEILING_NEAR,
+    DROP,
     EVEN,
     MIN_HISTORY,
     NOT_ACTIONABLE,
@@ -28,6 +31,11 @@ from .model import Run, cv, mean, median, same_sens
 SESSION_GAP = timedelta(minutes=40)
 # перерыв, после которого сессия в среднем ниже нормы (~0.4σ на истории автора)
 LONG_BREAK = timedelta(days=3)
+
+# статус сценария в обзоре: последние попытки против рекорда и нормы
+STATUS_RUNS = 3        # «последние 3» — типичный подход к сценарию за тренировку
+STATUS_NORM_MIN = 3    # столько попыток перед ними нужно, чтобы говорить о норме
+AT_MAX, IN_NORM, BELOW_NORM, FEW_DATA = "max", "norm", "below", "few"
 
 # порядок в «взять в работу»; действие к метке — todo.<код> в messages
 TODO_PRIORITY = {BELOW: 0, UNSTABLE: 1, PLATEAU: 2, CEILING: 2, EVEN: 3}
@@ -88,6 +96,28 @@ def pick_window(runs: list[Run], days: int | None, session: int) -> tuple[list[R
     index = min(session, len(sessions))
     title = t("window.last") if index == 1 else t("window.nth", n=index)
     return sessions[-index], title
+
+
+# ── обзор сценариев ──────────────────────────────────────────────────────────
+
+def scenario_status(scores: list[float]) -> dict:
+    """Статус по попыткам одного сценария на одной сенсе, по порядку.
+
+    На максимуме — медиана последних STATUS_RUNS у рекорда (как у «потолка»).
+    Ниже нормы — она ниже медианы до BASELINE_RUNS попыток перед ними на DROP.
+    """
+    if len(scores) < STATUS_RUNS:
+        return {"status": FEW_DATA, "recent": None, "best": max(scores, default=None), "share": None}
+    recent, best = median(scores[-STATUS_RUNS:]), max(scores)
+    share = recent / best if best else None
+    before = scores[-STATUS_RUNS - BASELINE_RUNS:-STATUS_RUNS]
+    if share is not None and share >= CEILING_NEAR:
+        status = AT_MAX
+    elif len(before) < STATUS_NORM_MIN or not median(before):
+        status = FEW_DATA
+    else:
+        status = BELOW_NORM if (recent - median(before)) / median(before) <= DROP else IN_NORM
+    return {"status": status, "recent": recent, "best": best, "share": share}
 
 
 # ── строки таблицы и план ────────────────────────────────────────────────────

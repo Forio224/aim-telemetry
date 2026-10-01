@@ -10,7 +10,7 @@ import json
 import os
 import re
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timedelta
 from importlib import resources
 
 from . import __version__, i18n, kovaaks_api
@@ -21,6 +21,7 @@ from .entry import entry_cost
 from .model import Run, same_sens
 from .report import (
     break_before,
+    scenario_status,
     scenario_table,
     split_sessions,
     todo,
@@ -31,6 +32,7 @@ PARTS = {"/*__CSS__*/": "dashboard.css", "/*__ECHARTS__*/": "echarts.min.js",
          "/*__JS__*/": "dashboard.js"}
 PLACEHOLDER = "/*__AIM_DATA__*/null"
 
+RECENT_DAYS = 30       # вкладка по умолчанию — тренажёр, где больше попыток за этот срок
 TODO_TOP = 5
 NEAREST_TOP = 6
 RUN_MINUTES = 1.0      # длительность последнего прогона сессии, которой нет в разнице времени
@@ -68,11 +70,13 @@ def scenarios_payload(runs: list[Run], now: datetime,
         current = own[-1].sens
         same = [r for r in own if same_sens(r.sens, current)]
         prog = progress(same, now)
+        status = scenario_status([r.score for r in same])
         out.append({
             "name": name, "kind": own[-1].kind, "n": len(own), "last": ts(own[-1].when),
             "tag": (tagged or {}).get(name),
             "sens": current, "best": max(r.score for r in same),
             "trend": prog.trend, "sinceBest": prog.days_since_best, "plateau": prog.plateau,
+            "status": status["status"], "recent": status["recent"], "share": status["share"],
             "t": [ts(r.when) for r in own], "s": [r.score for r in own],
             "a": [r.accuracy for r in own], "k": [sens_index[r.sens] for r in own],
         })
@@ -147,6 +151,30 @@ def bench_payload(bench_id: int, name: str, data: dict, runs: list[Run], now: da
     }
 
 
+def catalog_payload(username: str | None) -> list[dict] | None:
+    """Все бенчмарки kovaaks.com с рангом игрока. None — ника нет или сайт недоступен.
+
+    Ответ — чужие данные: берём только записи нужной формы.
+    """
+    if not username:
+        return None
+    try:
+        items = kovaaks_api.fetch_catalog(username)
+    except kovaaks_api.ApiError:
+        return None
+    out = []
+    for item in items:
+        bench_id, name = item.get("benchmarkId"), item.get("benchmarkName")
+        if item.get("type") != "benchmark" or not isinstance(bench_id, int) or not isinstance(name, str):
+            continue
+        rank = item.get("rankName")
+        color = item.get("rankColor")
+        out.append({"id": bench_id, "name": name.strip(), "author": str(item.get("benchmarkAuthor") or ""),
+                    "rank": rank if isinstance(rank, str) and rank != "No Rank" else None,
+                    "color": color if isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color) else None})
+    return out
+
+
 def benches_payload(runs: list[Run], bench_list: list[tuple[int, str]], steam_id: str,
                     now: datetime) -> list[dict]:
     """Все бенчмарки из списка. Недоступный — с ошибкой, чтобы дашборд сказал об этом."""
@@ -167,6 +195,7 @@ def source_payload(label: str, runs: list[Run], changes: list[aim_changes.Change
     scenarios, sens_list = scenarios_payload(runs, now, tagged)
     return {
         "label": label, "scenarios": scenarios, "sensList": sens_list,
+        "recent": sum(r.when >= now - timedelta(days=RECENT_DAYS) for r in runs),
         "days": days_payload(runs), "session": session_payload(runs, changes),
         "entry": entry_payload(runs, changes),
         "changes": changes_payload(runs, changes), **(extra or {}),
@@ -198,9 +227,10 @@ def page(data: dict) -> str:
 
 
 def write_dashboard(sources: dict[str, dict], changes: list[aim_changes.Change],
-                    test_date: str | None, out_path: str) -> str:
+                    test_date: str | None, out_path: str, bench_file: str | None = None) -> str:
     data = clean({
         "generated": ts(datetime.now()), "testDate": test_date, "version": __version__,
+        "benchFile": bench_file,
         "changes": [{"t": ts(c.when), "text": c.text} for c in changes],
         "sources": sources, "i18n": i18n.catalog(),
     })
