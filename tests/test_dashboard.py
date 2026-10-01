@@ -6,9 +6,11 @@ import re
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from unittest import mock
 
 from aim_telemetry import changes as aim_changes
 from aim_telemetry import dashboard as dash
+from aim_telemetry import kovaaks_api
 from aim_telemetry.model import Run
 
 T0 = datetime(2026, 9, 20, 20, 0)
@@ -37,6 +39,17 @@ class PayloadTest(unittest.TestCase):
         self.assertIsNone(payload["session"]["breakDays"])   # первая сессия — перерыва нет
         json.dumps(dash.clean(payload))   # всё сериализуется
 
+    def test_scenarios_carry_status_on_current_sens(self):
+        runs = [run(i * 2, s) for i, s in enumerate([90, 100, 99, 98])]
+        scenario = dash.source_payload("X", runs, [], T0 + timedelta(days=1))["scenarios"][0]
+        self.assertEqual((scenario["status"], scenario["last3"]), ("max", 99))
+        self.assertAlmostEqual(scenario["share"], 0.99)
+
+    def test_recent_counts_runs_of_last_30_days(self):
+        runs = [run(0, 100), run(40 * 24 * 60, 100), run(41 * 24 * 60, 100)]
+        payload = dash.source_payload("X", runs, [], T0 + timedelta(days=45))
+        self.assertEqual(payload["recent"], 2)
+
     def test_entry_cost_over_history(self):
         runs = [run(day * 24 * 60 + i * 2, 100 if i % 3 else 95, "AB"[i // 3])
                 for day in range(10) for i in range(6)]
@@ -50,6 +63,28 @@ class PayloadTest(unittest.TestCase):
         session = dash.session_payload(history + window, [])
         self.assertEqual(session["breakDays"], 4)
         self.assertIn(["after_break", {"days": 4}], session["rows"][0]["hints"])
+
+
+class CatalogTest(unittest.TestCase):
+    ITEMS = [
+        {"benchmarkId": 2834, "benchmarkName": "Voltaic S5.5 Intermediate ", "benchmarkAuthor": "VT",
+         "type": "benchmark", "rankName": "Platinum", "rankColor": "#8fd6ff"},
+        {"benchmarkId": 7, "benchmarkName": "Old", "type": "benchmark", "rankName": "No Rank", "rankColor": " "},
+        {"benchmarkId": 9, "benchmarkName": "Workout", "type": "workout", "rankName": "No Rank"},
+        {"benchmarkId": "x", "benchmarkName": "broken", "type": "benchmark"},   # чужие данные — проверяем форму
+    ]
+
+    def test_only_benchmarks_with_rank_or_none(self):
+        with mock.patch.object(kovaaks_api, "fetch_catalog", return_value=self.ITEMS):
+            catalog = dash.catalog_payload("user")
+        self.assertEqual(catalog, [
+            {"id": 2834, "name": "Voltaic S5.5 Intermediate", "author": "VT", "rank": "Platinum", "color": "#8fd6ff"},
+            {"id": 7, "name": "Old", "author": "", "rank": None, "color": None}])
+
+    def test_unavailable_catalog_is_none(self):
+        with mock.patch.object(kovaaks_api, "fetch_catalog", side_effect=kovaaks_api.ApiError("down")):
+            self.assertIsNone(dash.catalog_payload("user"))
+        self.assertIsNone(dash.catalog_payload(""))   # ника нет — каталог не спрашиваем
 
 
 class WriteTest(unittest.TestCase):

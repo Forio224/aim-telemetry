@@ -15,6 +15,8 @@ HTML_KEY = re.compile(r'data-i18n(?:-ph|-aria)?="([a-z_.0-9]+)"')
 DYNAMIC = {
     "label": ["no_base", "above", "below", "noise", "few", "unstable", "ceiling", "plateau", "even"],
     "hint": ["no_base", "above", "below", "noise_more", "noise_never", "few", "unstable", "ceiling", "plateau"],
+    "status": ["max", "norm", "below", "few"],
+    "col": ["scenario", "attempts", "best", "last3", "share", "status"],
     "todo": ["below", "unstable", "ceiling", "plateau", "even"],
     "note": ["never", "other_sens", "form_below", "stale"],
     "legend": ["norm", "max", "spread", "acc", "over", "trend", "since_best",

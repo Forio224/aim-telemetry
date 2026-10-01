@@ -82,8 +82,8 @@ function makeScale(bench) {
   };
 }
 
-const state = {source: null, scenario: null, bench: 0};
-try { state.bench = Number(localStorage.getItem("aim-bench")) || 0; } catch (e) { /* без хранилища — первый бенчмарк */ }
+const state = {source: null, scenario: null, bench: null};
+try { state.bench = Number(localStorage.getItem("aim-bench-id")) || null; } catch (e) { /* без хранилища — первый бенчмарк */ }
 const charts = {};
 
 function chart(id) {
@@ -127,8 +127,8 @@ function applyStatic() {
   document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.dataset.i18n); });
   document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = T(el.dataset.i18nPh); });
   document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", T(el.dataset.i18nAria)); });
-  $("#lang").textContent = LANG === "ru" ? "EN" : "RU";
-  $("#lang").setAttribute("aria-label", T("ui.lang_switch"));
+  $("#lang").setAttribute("aria-label", T("ui.lang_group"));
+  $("#lang").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === LANG)));
 }
 
 function renderTabs() {
@@ -141,22 +141,91 @@ function renderTabs() {
 
 /* ── бенчмарк: выбор ── */
 function benchesOf(src) { return src.benches || []; }
-function currentBench(src) {
-  const list = benchesOf(src), b = list[state.bench] || list[0];
-  return b && !b.error ? b : null;
+const detailed = src => benchesOf(src).filter(b => !b.error);
+function currentBench(src) { return detailed(src).find(b => b.id === state.bench) || null; }
+// герой показывает выбранный подробный бенчмарк, а при выборе из каталога — первый подробный
+function heroBench(src) { return currentBench(src) || detailed(src)[0] || null; }
+function selectedId(src) {
+  const known = benchesOf(src).some(b => b.id === state.bench) || (src.benchCatalog || []).some(b => b.id === state.bench);
+  return known ? state.bench : (detailed(src)[0] || benchesOf(src)[0] || {}).id;
+}
+const PICK_LIMIT = 60;   // строк в группе: каталог — сотни бенчмарков, остальное найдёт поиск
+
+function benchOption(b, id, extra = "") {
+  const rank = b.rank ? `<span class="rk" style="color:${b.color || css("--text")}">${esc(b.rank)}</span>` : "";
+  return `<button class="bench-opt" role="option" data-id="${b.id}" aria-selected="${b.id === id}" ${extra}>
+    <span>${esc(b.name)}</span>${rank}<span class="by">${b.author ? esc(T("ui.bench_by", {author: b.author})) : "#" + b.id}</span></button>`;
+}
+
+function benchGroup(title, items, id) {
+  if (!items.length) return "";
+  const more = items.length > PICK_LIMIT ? `<div class="bench-more">${T("ui.bench_more", {n: items.length - PICK_LIMIT})}</div>` : "";
+  return `<div class="bench-group">${title}</div>${items.slice(0, PICK_LIMIT).map(b => benchOption(b, id)).join("")}${more}`;
+}
+
+function renderBenchOptions(src, q) {
+  const id = selectedId(src), catalog = src.benchCatalog || [];
+  const fav = new Set(benchesOf(src).map(b => b.id));
+  const match = b => !q || `${b.name} ${b.author || ""} ${b.id}`.toLowerCase().includes(q);
+  const favs = benchesOf(src).filter(match).map(b => {
+    const site = catalog.find(c => c.id === b.id) || {};
+    return b.error ? benchOption({...b, rank: T("ui.bench_unavailable")}, id, `disabled title="${esc(b.error)}"`)
+      : benchOption({...b, author: site.author, rank: site.rank, color: site.color}, id);
+  }).join("");
+  const rest = catalog.filter(b => !fav.has(b.id) && match(b));
+  $("#bench-options").innerHTML = (favs ? `<div class="bench-group">${T("ui.bench_fav")}</div>${favs}` : "") +
+    benchGroup(T("ui.bench_ranked"), rest.filter(b => b.rank), id) + benchGroup(T("ui.bench_rest"), rest.filter(b => !b.rank), id) ||
+    `<div class="bench-more">${T("ui.nothing_found")}</div>`;
+  $("#bench-options").querySelectorAll(".bench-opt:not(:disabled)").forEach(o => o.addEventListener("click", () => pickBench(src, Number(o.dataset.id))));
+}
+
+function pickBench(src, id) {
+  state.bench = id;
+  try { localStorage.setItem("aim-bench-id", String(id)); } catch (e) { /* хранилище недоступно — не страшно */ }
+  renderHero(src);
+  renderCategories(src);
+  $(".bench-current").focus();
+}
+
+function toggleBenchMenu(src, open) {
+  const menu = $(".bench-menu"), btn = $(".bench-current");
+  menu.hidden = !open;
+  btn.setAttribute("aria-expanded", String(open));
+  if (!open) return;
+  const search = $("#bench-search");
+  search.value = "";
+  renderBenchOptions(src, "");
+  search.focus();
 }
 
 function renderBenchPick(src) {
-  const list = benchesOf(src);
-  if (state.bench >= list.length) state.bench = 0;
-  $("#bench-pick").innerHTML = list.map((b, i) => `<button class="pick" data-i="${i}" aria-pressed="${i === state.bench}"
-      ${b.error ? `disabled title="${esc(b.error)}"` : ""}>${esc(b.name)}</button>`).join("");
-  $("#bench-pick").querySelectorAll(".pick").forEach(p => p.addEventListener("click", () => {
-    state.bench = Number(p.dataset.i);
-    try { localStorage.setItem("aim-bench", String(state.bench)); } catch (e) { /* хранилище недоступно — не страшно */ }
-    renderHero(src);
-    renderCategories(src);
-  }));
+  const id = selectedId(src), catalog = src.benchCatalog;
+  const b = benchesOf(src).find(x => x.id === id) || (catalog || []).find(x => x.id === id) || {};
+  const site = (catalog || []).find(x => x.id === id) || b;
+  const rank = site.rank ? `<span class="rk" style="color:${site.color || css("--text")}">${esc(site.rank)}</span>` : "";
+  const note = catalog ? T("ui.bench_count", {n: catalog.length}) : T("ui.bench_no_catalog");
+  $("#bench-pick").innerHTML = `<button class="bench-current" type="button" aria-haspopup="listbox" aria-expanded="false">
+      ${esc(b.name || "—")} ${rank}<span class="caret">▼</span></button><span class="bench-note">${note}</span>
+    <div class="bench-menu" hidden><input class="search" id="bench-search" type="search" placeholder="${T("ui.bench_search")}" aria-label="${T("ui.bench_search")}">
+      <div class="bench-options" id="bench-options" role="listbox"></div></div>`;
+  $(".bench-current").addEventListener("click", () => toggleBenchMenu(src, $(".bench-menu").hidden));
+  $("#bench-search").addEventListener("input", e => renderBenchOptions(src, e.target.value.trim().toLowerCase()));
+  $(".bench-menu").addEventListener("keydown", e => { if (e.key === "Escape") { toggleBenchMenu(src, false); $(".bench-current").focus(); } });
+}
+
+function benchBrief(src, b) {
+  const line = `${b.id}  # ${b.name}`;
+  $("#gauges").innerHTML = `<div class="bench-brief">
+    <h3>${esc(b.name)}</h3>
+    <div class="rk" style="color:${b.color || css("--muted")}">${esc(b.rank || T("ui.bench_no_rank"))}</div>
+    <p>${b.author ? esc(T("ui.bench_by", {author: b.author})) + " · " : ""}${T("ui.site_rank")}</p>
+    <p>${T("ui.bench_brief", {file: `<b>${esc(DATA.benchFile || "benchmarks.txt")}</b>`})}</p>
+    <code>${esc(line)}</code><button class="copy" type="button">${T("ui.copy")}</button></div>`;
+  $("#advice").innerHTML = "";
+  $("#gauges .copy").addEventListener("click", e => {
+    const done = () => { e.target.textContent = T("ui.copied"); };
+    if (navigator.clipboard) navigator.clipboard.writeText(line).then(done, () => {}); else done();
+  });
 }
 
 /* ── герой ── */
@@ -220,7 +289,7 @@ function setupTiles(src) {
 
 function renderHero(src) {
   const last = (DATA.changes || []).filter(c => c.t <= Date.now()).slice(-1)[0];
-  const bench = currentBench(src);
+  const bench = heroBench(src);
   const week = src.days.filter(d => Date.parse(d.d) >= Date.now() - 7 * DAY);
   const weekRuns = week.reduce((a, d) => a + d.runs, 0);
   const test = DATA.testDate ? Math.ceil((Date.parse(DATA.testDate) - Date.now()) / DAY) : null;
@@ -291,17 +360,20 @@ function renderAdvice(bench, sc) {
 }
 
 function renderCategories(src) {
-  const list = benchesOf(src), bench = currentBench(src);
-  $("#cats-section").classList.toggle("hidden", !list.length);
-  if (!list.length) return;
+  const list = benchesOf(src), catalog = src.benchCatalog || [];
+  $("#cats-section").classList.toggle("hidden", !list.length && !catalog.length);
+  if (!list.length && !catalog.length) return;
   renderBenchPick(src);
-  if (!bench) {
-    $("#gauges").innerHTML = `<div class="empty">${T("ui.bench_failed", {error: esc((list[state.bench] || {}).error || "")})}</div>`;
+  const id = selectedId(src), bench = list.find(b => b.id === id);
+  $(".cats").classList.toggle("solo", !bench);
+  $("#cats-aside").textContent = bench ? T("ui.cats_aside", {id}) : "id " + id;
+  if (!bench) return benchBrief(src, catalog.find(b => b.id === id));
+  if (bench.error) {
+    $("#gauges").innerHTML = `<div class="empty">${T("ui.bench_failed", {error: esc(bench.error)})}</div>`;
     $("#advice").innerHTML = "";
     return;
   }
   const sc = makeScale(bench);
-  $("#cats-aside").textContent = T("ui.cats_aside", {id: bench.id});
   const bands = sc.names.map((n, i) => {
     const from = sc.marks[i], to = sc.marks[i + 1] ?? sc.max;
     return `<span class="band" style="left:${sc.x(from)}%;width:${sc.x(to) - sc.x(from)}%;background:${sc.color(i)}"></span>` +
@@ -311,6 +383,23 @@ function renderCategories(src) {
     `<div class="gauge-legend">${sc.names.map((n, i) => `<span><i style="background:${sc.color(i)}"></i>${esc(n)}${sc.energyMode ? " " + sc.marks[i] + "+" : ""}</span>`).join("")}
      <span><i style="background:${css("--text")};width:3px;height:10px"></i>${T("col.form")}</span></div>`;
   renderAdvice(bench, sc);
+}
+
+/* ── обзор сценариев за 30 дней ── */
+const STATUS_CLASS = {max: "l-good", norm: "l-flat", below: "l-bad", few: "l-na"};
+
+function renderOverview(src) {
+  const rows = src.scenarios.filter(s => s.last >= DATA.generated - 30 * DAY);
+  $("#ov-aside").textContent = rows.length ? T("ui.ov_aside", {n: rows.length}) : "";
+  const heads = ["scenario", "attempts", "best", "last3", "share", "status"];
+  $("#overview").innerHTML = rows.length
+    ? `<thead><tr>${heads.map(h => `<th>${T("col." + h)}</th>`).join("")}</tr></thead><tbody>${rows.map(s => `<tr>
+        <td><button class="row-link" data-name="${esc(s.name)}" title="${esc(s.name)}">${esc(s.name)}</button></td>
+        <td class="num">${s.n}</td><td class="num">${n1(s.best)}</td><td class="num">${n1(s.last3)}</td>
+        <td class="num">${s.share == null ? "—" : Math.floor(s.share * 100) + "%"}</td>
+        <td><span class="label ${STATUS_CLASS[s.status] || "l-na"}">${esc(T("status." + s.status))}</span></td></tr>`).join("")}</tbody>`
+    : `<tbody><tr><td class="empty">${T("ui.ov_none")}</td></tr></tbody>`;
+  $("#overview").querySelectorAll(".row-link").forEach(b => b.addEventListener("click", () => selectScenario(b.dataset.name, true)));
 }
 
 /* ── объём по дням ── */
@@ -349,12 +438,8 @@ function renderList(src) {
   $("#list").querySelectorAll(".scn").forEach(b => b.addEventListener("click", () => selectScenario(b.dataset.name)));
 }
 
-function rolling(values, size) {
-  return values.map((_, i) => median(values.slice(Math.max(0, i - size + 1), i + 1)));
-}
-
 function scenarioChips(s, cur, other) {
-  const last5 = cur.slice(-5).map(p => p[1]);
+  const last5 = cur.slice(-5).map(p => p.score);
   return [
     `<span class="chip">${T("common.runs", {n: s.n})}${other.length ? T("ui.chip_other", {n: other.length}) : ""}</span>`,
     `<span class="chip">${T("col.best")} <b>${n1(s.best)}</b></span>`,
@@ -370,54 +455,52 @@ function renderScenario(src) {
   if (!s) return;
   const curIdx = src.sensList.indexOf(s.sens);
   const cur = [], other = [];
-  s.t.forEach((t, i) => (s.k[i] === curIdx ? cur : other).push([t, s.s[i], s.a[i], src.sensList[s.k[i]]]));
-  const med = rolling(cur.map(p => p[1]), 7).map((v, i) => [cur[i][0], v]);
+  s.t.forEach((t, i) => (s.k[i] === curIdx ? cur : other).push({t, score: s.s[i], acc: s.a[i]}));
   let best = -Infinity;
-  const pb = cur.map(p => [p[0], best = Math.max(best, p[1])]);
+  const pb = cur.map(p => (best = Math.max(best, p.score)));
 
   $("#scn-title").textContent = s.name;
   $("#scn-chips").innerHTML = scenarioChips(s, cur, other);
 
   const c = chart("scn-chart");
-  if (!c) return;
-  // по умолчанию — от первого прогона на текущей сенсе (не дальше 45 дней), иначе старая
-  // история на другой сенсе сжимает текущую в правый край
-  const all = s.t, lastT = all[all.length - 1];
-  const edge = Math.max((lastT - all[0]) * 0.01, 20 * 60000);   // запас по краям: крайние точки не срезаются рамкой
-  let start = Math.max(all[0], cur.length ? cur[0][0] - 2 * DAY : -Infinity);
-  // окно в 45 дней — только если в нём достаточно прогонов, иначе видна кучка точек у края
-  if (all.filter(t => t >= lastT - 45 * DAY).length >= 15) start = Math.max(start, lastT - 45 * DAY);
-  const tip = p => `${dmy(p.value[0])} ${hm(p.value[0])}<br><b>${n1(p.value[1])}</b>` +
-    (p.value[2] != null ? ` · ${T("col.acc")} ${n1(p.value[2])}%` : "") + (p.value[3] && p.value[3] !== "?" ? `<br>${T("ui.sens")} ${esc(p.value[3])}` : "");
+  if (!c || !cur.length) return;
+  // подпись даты — под первой попыткой дня; категории строками, чтобы числа в разметке были индексами
+  const newDay = cur.map((p, i) => i === 0 || dm(p.t) !== dm(cur[i - 1].t));
+  const inSession = cur.map(p => p.t >= src.session.start && p.t <= src.session.end);
+  const sesFrom = inSession.indexOf(true), sesTo = inSession.lastIndexOf(true);
+  const changes = (DATA.changes || []).map(ch => ({i: cur.findIndex(p => p.t >= ch.t), ch})).filter(x => x.i > 0);
+  const start = Math.max(0, cur.length - 50);
   c.setOption({
     ...baseChart(),
     grid: {left: 64, right: 18, top: 30, bottom: 60},
     legend: {top: 0, right: 8, textStyle: {color: css("--muted"), fontSize: 11}, itemWidth: 14, itemHeight: 8},
-    tooltip: {...baseChart().tooltip, trigger: "item", formatter: p => p.seriesId === "median" || p.seriesId === "pb"
-      ? `${p.seriesName}: <b>${n1(p.value[1])}</b><br>${dmy(p.value[0])}` : tip(p)},
-    // внутри суток — часы, на полуночи — дата: после увеличения видно, где кончается день
-    xAxis: {type: "time", ...axisStyle(), splitLine: {show: false},
-      axisLabel: {color: css("--faint"), fontSize: 11, hideOverlap: true,
-        formatter: t => { const d = new Date(t); return d.getHours() || d.getMinutes() ? hm(t) : dm(t); }},
-      min: v => v.min - edge, max: v => v.max + edge},
+    tooltip: {...baseChart().tooltip, trigger: "axis", axisPointer: {type: "line", lineStyle: {color: css("--line-2")}},
+      formatter: ps => {
+        const i = ps[0].dataIndex, p = cur[i];
+        return `${T("ui.attempt", {n: i + 1})} · ${dmy(p.t)} ${hm(p.t)}<br><b>${n1(p.score)}</b>` +
+          (p.acc != null ? ` · ${T("col.acc")} ${n1(p.acc)}%` : "") + `<br>${T("col.best")} ${n1(pb[i])}`;
+      }},
+    xAxis: {type: "category", data: cur.map((_, i) => String(i + 1)), boundaryGap: false, ...axisStyle(), splitLine: {show: false},
+      axisTick: {show: true, interval: i => newDay[i], lineStyle: {color: css("--line-2")}},
+      axisLabel: {color: css("--faint"), fontSize: 11, interval: i => newDay[i], hideOverlap: true, formatter: (v, i) => dm(cur[i].t)}},
     yAxis: {type: "value", scale: true, ...axisStyle()},
-    // filterMode none: линии не рвутся на краю окна, ось Y подгоняет fitY
-    dataZoom: [{type: "inside", startValue: start, filterMode: "none"}, {...zoomSlider(start), filterMode: "none"}],
+    dataZoom: [{type: "inside", startValue: start}, zoomSlider(start)],
     series: [
-      {id: "other", name: T("ui.s_other"), type: "scatter", data: other, symbolSize: 6, z: 4,
-        itemStyle: {color: css("--faint"), opacity: .7, borderColor: css("--panel"), borderWidth: 1}},
-      {id: "run", name: T("ui.s_run"), type: "scatter", data: cur, symbolSize: 8, z: 6,
+      {id: "run", name: T("ui.s_run"), type: "line", data: cur.map(p => p.score), symbol: "circle", symbolSize: 7, z: 6,
+        lineStyle: {color: css("--text"), width: 1.4, opacity: .8},
         itemStyle: {color: css("--text"), borderColor: css("--panel"), borderWidth: 1.5},
         emphasis: {scale: 1.6, itemStyle: {color: css("--signal")}},
-        markArea: {silent: true, itemStyle: {color: css("--signal-dim")},
-          data: [[{xAxis: src.session.start}, {xAxis: src.session.end}]]}},
-      {id: "median", name: T("ui.s_median"), type: "line", data: med, showSymbol: false, z: 3,
-        lineStyle: {color: css("--signal"), width: 2, opacity: .85}, markLine: changeLines()},
-      {id: "pb", name: T("col.best"), type: "line", step: "end", data: pb, showSymbol: false,
-        z: 2, lineStyle: {color: css("--cap"), width: 1.2, type: [4, 3]}},
+        markArea: sesFrom < 0 ? undefined : {silent: true, itemStyle: {color: css("--signal-dim")},
+          label: {show: true, position: "insideTop", color: css("--faint"), fontSize: 10, formatter: T("ui.s_session")},
+          data: [[{xAxis: sesFrom}, {xAxis: sesTo}]]},
+        markLine: {...changeLines(), data: changes.map(x => ({xAxis: x.i, name: x.ch.text, t: x.ch.t})),
+          label: {show: true, position: "insideEndTop", color: css("--signal"), fontSize: 10, formatter: p => dm(p.data.t)},
+          tooltip: {formatter: p => `${dmy(p.data.t)}<br>${esc(p.name)}`}}},
+      {id: "pb", name: T("col.best"), type: "line", step: "end", data: pb, showSymbol: false, z: 2,
+        lineStyle: {color: css("--good"), width: 1.2, type: [4, 3]}},
     ],
   });
-  fitY(c, [...cur, ...other]);
+  fitY(c, cur.map((p, i) => [i, p.score]));
 }
 
 /* Ось Y — по прогонам в видимом окне, а не по всей истории и линии рекорда:
@@ -530,6 +613,7 @@ function selectSource(key) {
   renderTabs();
   renderHero(src);
   renderCategories(src);
+  renderOverview(src);
   renderVolume(src);
   renderSession(src);
   renderChanges(src);
@@ -538,8 +622,9 @@ function selectSource(key) {
     ? state.scenario : first ? first.scenario : src.scenarios[0].name);
 }
 
-function switchLang() {
-  LANG = LANG === "ru" ? "en" : "ru";
+function switchLang(lang) {
+  if (lang === LANG) return;
+  LANG = lang;
   try { localStorage.setItem("aim-lang", LANG); } catch (e) { /* не запомнится — не страшно */ }
   selectSource(state.source);
 }
@@ -549,12 +634,18 @@ function init() {
   if (!I18N.messages["ui.built"]) LANG = "ru";
   if (!window.echarts) document.querySelector(".wrap").insertAdjacentHTML("afterbegin",
     `<div class="warn-line">${T("ui.no_echarts")}</div>`);
+  document.addEventListener("click", e => {
+    const menu = $(".bench-menu");
+    if (menu && !menu.hidden && !e.target.closest(".bench-pick")) toggleBenchMenu(DATA.sources[state.source], false);
+  });
   $("#search").addEventListener("input", () => renderList(DATA.sources[state.source]));
   $("#recent").addEventListener("change", () => renderList(DATA.sources[state.source]));
-  $("#lang").addEventListener("click", switchLang);
+  $("#lang").querySelectorAll("button").forEach(b => b.addEventListener("click", () => switchLang(b.dataset.lang)));
   let pending;
   window.addEventListener("resize", () => { clearTimeout(pending); pending = setTimeout(() => Object.values(charts).forEach(c => c.resize()), 120); });
   const fromHash = location.hash.slice(1);
-  selectSource(DATA.sources[fromHash] ? fromHash : Object.keys(DATA.sources)[0]);
+  const keys = Object.keys(DATA.sources);
+  const busiest = keys.reduce((a, k) => (DATA.sources[k].recent || 0) > (DATA.sources[a].recent || 0) ? k : a, keys[0]);
+  selectSource(DATA.sources[fromHash] ? fromHash : busiest);
 }
 init();
