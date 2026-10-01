@@ -290,7 +290,8 @@ def kovaaks_source(cfg: config.Config, args: argparse.Namespace, changes: list,
                if online and cfg.steam_id else [])
     catalog = dashboard.catalog_payload(cfg.kovaaks_user) if online else None
     return dashboard.source_payload("KovaaK's", runs, changes, now,
-                                    {"benches": benches, "benchCatalog": catalog})
+                                    {"benches": benches, "benchCatalog": catalog,
+                                     "steamId": cfg.steam_id or None})
 
 
 def aimbeast_source(cfg: config.Config, changes: list, now: datetime) -> dict | None:
@@ -312,8 +313,7 @@ def build_dashboard(cfg: config.Config, args: argparse.Namespace, changes: list)
     if not sources:
         raise SystemExit(t("dash.no_sources"))
     path = dashboard.write_dashboard(sources, changes, cfg.test_date or None,
-                                     args.out or config.dashboard_path(cfg),
-                                     config.benchmarks_path())
+                                     args.out or config.dashboard_path(cfg))
     print(t("dash.saved", path=path))
     if not args.no_open:
         dashboard.open_in_browser(path)
