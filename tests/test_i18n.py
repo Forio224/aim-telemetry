@@ -18,7 +18,7 @@ DYNAMIC = {
     "todo": ["below", "unstable", "ceiling", "plateau", "even"],
     "note": ["never", "other_sens", "form_below", "stale"],
     "legend": ["norm", "max", "spread", "acc", "over", "trend", "since_best",
-               "shift", "noise", "level", "unstable", "ceiling", "plateau"],
+               "shift", "noise", "unstable", "ceiling", "plateau", "entry"],
     "ui": ["aimbeast_note"],
 }
 PARAM = re.compile(r"\{(\w+)(?::\w+)?\}")

@@ -167,7 +167,7 @@ def print_legend() -> None:
     for key in ("norm", "max", "spread", "acc", "over", "trend", "since_best"):
         print("  " + t("legend." + key))
     print()
-    for key in ("shift", "noise", "level", "unstable", "ceiling", "plateau"):
+    for key in ("shift", "noise", "unstable", "ceiling", "plateau", "entry"):
         print("  " + t("legend." + key))
     print()
 

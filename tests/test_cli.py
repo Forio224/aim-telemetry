@@ -57,6 +57,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("Track A", ru)
         self.assertIn("ВХОД В СЦЕНАРИЙ", ru)
         self.assertNotIn("ФОРМА СЕССИИ", ru)
+        self.assertIn("σ (сигма)", ru)            # «как читать» объясняет единицу карточки
         for verdict in ("разминк", "спад"):
             self.assertNotIn(verdict, ru)
         en = self.run_cli("--lang", "en")
