@@ -59,6 +59,18 @@ class CliTest(unittest.TestCase):
         self.assertIn("SCENARIOS", en)
         self.assertNotIn("СЦЕНАРИИ", en)
 
+    def test_break_is_counted_before_scenario_filter(self):
+        self.assertNotIn("после перерыва", self.run_cli())   # сессии день за днём
+        start = datetime(2026, 9, 26, 20, 0)                 # следующая — через 4 дня 23 ч
+        for i in range(4):
+            when = start + timedelta(minutes=2 * i)
+            name = "Track %s - Challenge - %s Stats.csv" % ("AB"[i % 2], when.strftime("%Y.%m.%d-%H.%M.%S"))
+            with open(os.path.join(self.stats, name), "w", encoding="utf-8") as fh:
+                fh.write(CSV.format(hits=500, score=3000))
+        # Track B в сессии не первый: перерыв всё равно перед всей сессией
+        self.assertIn("после перерыва 4 дня", self.run_cli("--scenario", "Track B"))
+        self.assertNotIn("после перерыва", self.run_cli("--days", "14"))
+
     def test_set_and_show_config(self):
         self.run_cli("--set", "test_date=2026-10-13", "lang=en")
         cfg = config.load(config.config_path(self.folder))

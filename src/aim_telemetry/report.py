@@ -27,6 +27,8 @@ from .model import SPREAD_FLOOR, Run, cv, mean, median, same_sens
 
 # разрыв между прогонами, после которого считаем, что началась новая сессия
 SESSION_GAP = timedelta(minutes=40)
+# перерыв, после которого сессия в среднем ниже нормы (~0.4σ на истории автора)
+LONG_BREAK = timedelta(days=3)
 
 SHAPE_STEP = 0.4       # сдвиг в z-единицах, который считаем значимым
 SHAPE_MIN_RUNS = 5     # сессии короче не несут информации о форме
@@ -75,6 +77,19 @@ def split_sessions(runs: list[Run]) -> list[list[Run]]:
     if current:
         sessions.append(current)
     return sessions
+
+
+def break_before(runs: list[Run], window: list[Run]) -> int | None:
+    """Целых суток перерыва перед окном — от последнего прогона до него.
+
+    None, если перерыв короче LONG_BREAK или до окна ничего не играли. Считать
+    по окну до фильтра по сценарию: иначе «перерыв» найдётся внутри сессии.
+    """
+    start = window[0].when
+    previous = next((r for r in reversed(runs) if r.when < start), None)
+    if previous is None or start - previous.when < LONG_BREAK:
+        return None
+    return (start - previous.when).days
 
 
 def pick_window(runs: list[Run], days: int | None, session: int) -> tuple[list[Run], str]:
@@ -169,7 +184,7 @@ def scenario_progress(runs: list[Run], window: list[Run], scenario: str) -> Prog
 
 
 def scenario_row(scenario: str, window: list[Run], base: Baseline, prog: Progress,
-                 cutoff: datetime | None) -> dict:
+                 cutoff: datetime | None, break_days: int | None = None) -> dict:
     runs = [r for r in window if r.scenario == scenario]
     scores = [r.score for r in runs]
     verdict = diagnose(scores, base)
@@ -179,6 +194,9 @@ def scenario_row(scenario: str, window: list[Run], base: Baseline, prog: Progres
     hints = [[verdict.hint, verdict.params or {}]] if verdict.hint else []
     if prog.plateau:
         hints.append([PLATEAU, {"days": prog.days_since_best}])
+    # перерыв не меняет диагноз — только объясняет просадку
+    if verdict.label == BELOW and break_days is not None:
+        hints.append(["after_break", {"days": break_days}])
     return {
         "scenario": scenario, "n": len(runs), "avg": mean(scores), "best": base.best,
         "norm": median(base.scores) if len(base.scores) >= MIN_HISTORY else None,
@@ -192,9 +210,10 @@ def scenario_row(scenario: str, window: list[Run], base: Baseline, prog: Progres
 
 
 def scenario_table(window: list[Run], runs: list[Run], baselines: dict[str, Baseline],
-                   cutoff: datetime | None) -> list[dict]:
+                   cutoff: datetime | None, break_days: int | None = None) -> list[dict]:
     """Строки по всем сценариям окна: сначала с базой, по отставанию от максимума."""
-    table = [scenario_row(s, window, baselines[s], scenario_progress(runs, window, s), cutoff)
+    table = [scenario_row(s, window, baselines[s], scenario_progress(runs, window, s), cutoff,
+                          break_days)
              for s in sorted({r.scenario for r in window})]
     return sorted(table, key=lambda r: (r["norm"] is None, r["deficit"]))
 

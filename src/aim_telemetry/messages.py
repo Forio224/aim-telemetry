@@ -39,6 +39,8 @@ MESSAGES = {
                       "en": "spread {now}% vs usual {norm}% — attention, not mechanics"},
     "hint.ceiling": {"ru": "ровно и у максимума — нужна изоляция техники, а не повторы",
                      "en": "steady and at your best — isolate technique, more reps won't help"},
+    "hint.after_break": {"ru": "после перерыва {days} {days:day} часть просадки ожидаема",
+                         "en": "after {days} {days:day} off, part of the dip is expected"},
     "hint.plateau": {"ru": "рекорда нет {days} дн. — плато", "en": "no PB for {days} days — plateau"},
 
     "todo.below": {"ru": "6–8 прогонов, первые два за пределом комфорта",
@@ -51,6 +53,7 @@ MESSAGES = {
                      "en": "PB is stuck: isolate technique or switch to a sibling scenario"},
     "todo.even": {"ru": "поддержание, наращивать не нужно", "en": "maintenance, no need to add volume"},
 
+    "note.after_break": {"ru": "после перерыва {n} {n:day}", "en": "after {n} {n:day} off"},
     "note.never": {"ru": "не играна ни разу", "en": "never played"},
     "note.other_sens": {"ru": "на текущей сенсе не играна — рекорд с другой",
                         "en": "not played at current sens — the PB is from another"},

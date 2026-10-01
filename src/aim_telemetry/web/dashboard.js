@@ -460,7 +460,8 @@ function sessionRow(r) {
 
 function renderSession(src) {
   const ses = src.session, mins = Math.round((ses.end - ses.start) / 60000);
-  $("#ses-aside").textContent = T("ui.ses_aside", {date: dm(ses.start), start: hm(ses.start), end: hm(ses.end), n: ses.n, m: mins});
+  const pause = ses.breakDays != null ? " · " + T("note.after_break", {n: ses.breakDays}) : "";
+  $("#ses-aside").textContent = T("ui.ses_aside", {date: dm(ses.start), start: hm(ses.start), end: hm(ses.end), n: ses.n, m: mins}) + pause;
   const heads = ["scenario", "runs", "avg", "norm", "max", "deficit", "spread", "trend", "since_best", "verdict"];
   $("#diag").innerHTML = `<thead><tr>${heads.map(h => `<th>${T("col." + h)}</th>`).join("")}</tr></thead>` +
     `<tbody>${ses.rows.map(sessionRow).join("")}</tbody>`;

@@ -26,6 +26,7 @@ from .report import (
     ShapePoint,
     aggregate_shape,
     aimbeast_to_runs,
+    break_before,
     find_fatigue,
     find_warmup,
     hint_text,
@@ -108,7 +109,7 @@ def format_row(row: dict) -> str:
 
 
 def print_scenarios(window: list[Run], runs: list[Run], baselines: dict[str, Baseline],
-                    cutoff: datetime | None) -> list[dict]:
+                    cutoff: datetime | None, break_days: int | None) -> list[dict]:
     header = "%-28s %4s %8s %9s %8s %7s %7s %6s %7s %7s %4s  %s" % (
         t("col.scenario"), t("col.runs"), t("col.avg"), t("col.norm"), t("col.max"),
         t("col.deficit"), t("col.spread"), t("col.acc"), t("col.over"), t("col.trend"),
@@ -117,7 +118,7 @@ def print_scenarios(window: list[Run], runs: list[Run], baselines: dict[str, Bas
     print(header)
     print("-" * len(header))
 
-    table = scenario_table(window, runs, baselines, cutoff)
+    table = scenario_table(window, runs, baselines, cutoff, break_days)
     for row in table:
         print(format_row(row))
 
@@ -259,7 +260,8 @@ def filter_scenario(runs: list[Run], needle: str | None) -> list[Run]:
     return [r for r in runs if needle.lower() in r.scenario.lower()] if needle else runs
 
 
-def print_window_header(window: list[Run], title: str, args: argparse.Namespace) -> None:
+def print_window_header(window: list[Run], title: str, args: argparse.Namespace,
+                        break_days: int | None) -> None:
     start, end = window[0].when, window[-1].when
     scenarios = len({r.scenario for r in window})
     print()
@@ -270,7 +272,8 @@ def print_window_header(window: list[Run], title: str, args: argparse.Namespace)
     else:
         print(t("window.range_session", start=start.strftime("%d.%m %H:%M"),
                 end=end.strftime("%H:%M"), runs=len(window), scenarios=scenarios,
-                minutes=round((end - start).total_seconds() / 60)))
+                minutes=round((end - start).total_seconds() / 60))
+              + (" · " + t("note.after_break", n=break_days) if break_days is not None else ""))
     print()
 
 
@@ -440,6 +443,8 @@ def session_report(cfg: config.Config, args: argparse.Namespace, changes: list) 
         return
 
     window, title = pick_window(runs, args.days, args.session)
+    # до фильтра: перерыв — перед всей сессией; у окна из нескольких сессий его нет
+    break_days = None if args.days else break_before(runs, window)
     window = filter_scenario(window, args.scenario)
     if not window:
         raise SystemExit(t("window.no_match", needle=args.scenario))
@@ -447,13 +452,13 @@ def session_report(cfg: config.Config, args: argparse.Namespace, changes: list) 
     cutoff = change.when if change else None
     baselines, excluded = build_baselines(runs, window, cutoff)
 
-    print_window_header(window, title, args)
+    print_window_header(window, title, args, break_days)
     if args.source == "aimbeast":
         print_aimbeast_environment(args.dir)
     else:
         print_environment(window, excluded)
     print_change_note(change, baselines, window[-1].when)
-    table = print_scenarios(window, runs, baselines, cutoff)
+    table = print_scenarios(window, runs, baselines, cutoff, break_days)
     print_shape(window, baselines, aggregate=bool(args.days))
     print_todo(table, args.top)
     print_legend()

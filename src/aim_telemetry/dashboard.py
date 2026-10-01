@@ -20,6 +20,7 @@ from .diagnose import build_baselines, progress
 from .model import Run, same_sens
 from .report import (
     aggregate_shape,
+    break_before,
     find_fatigue,
     find_warmup,
     scenario_table,
@@ -109,13 +110,14 @@ def session_payload(runs: list[Run], changes: list[aim_changes.Change]) -> dict:
     change = aim_changes.last_change(changes, window[0].when)
     cutoff = change.when if change else None
     baselines, _ = build_baselines(runs, window, cutoff)
-    table = scenario_table(window, runs, baselines, cutoff)
+    break_days = break_before(runs, window)
+    table = scenario_table(window, runs, baselines, cutoff, break_days)
     shape = shape_payload(session_shape(window, baselines))
     for point, run in zip(shape["points"], window):
         point.update(scenario=run.scenario, score=run.score)
     return {
         "start": ts(window[0].when), "end": ts(window[-1].when), "n": len(window),
-        "rows": table, "shape": shape,
+        "breakDays": break_days, "rows": table, "shape": shape,
         "todo": [item._asdict() for item in todo(table, TODO_TOP)],
         "setup": {"sens": window[-1].sens, "dpi": window[-1].dpi, "fov": window[-1].fov,
                   "res": window[-1].res},

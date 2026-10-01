@@ -32,7 +32,15 @@ class PayloadTest(unittest.TestCase):
         self.assertEqual({s["name"] for s in payload["scenarios"]}, {"A", "B"})
         self.assertEqual(payload["session"]["n"], 20)
         self.assertEqual(len(payload["session"]["shape"]["points"]), 20)
+        self.assertIsNone(payload["session"]["breakDays"])   # первая сессия — перерыва нет
         json.dumps(dash.clean(payload))   # всё сериализуется
+
+    def test_session_after_long_break_reports_days_and_hint(self):
+        history = [run(i * 2, 100) for i in range(12)]
+        window = [run(5 * 24 * 60 + i * 2, 90) for i in range(3)]
+        session = dash.session_payload(history + window, [])
+        self.assertEqual(session["breakDays"], 4)
+        self.assertIn(["after_break", {"days": 4}], session["rows"][0]["hints"])
 
 
 class WriteTest(unittest.TestCase):
